@@ -1,3 +1,15 @@
+# dashboard/models.py
 from django.db import models
+from django.contrib.auth.models import User
 
-# Create your models here.
+
+class DashboardStat(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='dashboard_stat')
+    total_cvs = models.IntegerField(default=0)
+    total_interviews = models.IntegerField(default=0)
+    average_ats_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    average_matching_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Dashboard Stats - {self.user.username}"
