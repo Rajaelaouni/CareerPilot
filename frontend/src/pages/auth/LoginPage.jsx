@@ -15,6 +15,7 @@
 
 import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Vortex } from "../../components/Vortex";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -45,98 +46,110 @@ function LeftPanel() {
   return (
     <div style={{
       flex: 1,
-      background: COLORS.gradient,
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "space-between",
-      padding: "48px 40px",
       position: "relative",
       overflow: "hidden",
       minHeight: "100vh",
     }}>
-      {/* Cercles décoratifs */}
-      <div style={{
-        position: "absolute", top: "-80px", right: "-80px",
-        width: 300, height: 300, borderRadius: "50%",
-        background: "rgba(255,255,255,0.08)",
-      }} />
-      <div style={{
-        position: "absolute", bottom: "120px", left: "-60px",
-        width: 220, height: 220, borderRadius: "50%",
-        background: "rgba(255,255,255,0.06)",
-      }} />
-
-      {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, zIndex: 1 }}>
+      <Vortex
+        backgroundColor="#050308"
+        baseHue={300}
+        particleCount={700}
+        rangeY={200}
+        baseSpeed={0.2}
+        rangeSpeed={2}
+      >
+        {/* Overlay dégradé */}
         <div style={{
-          width: 40, height: 40, borderRadius: 12,
-          background: "rgba(255,255,255,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, fontWeight: 800, color: "#fff",
-          fontFamily: "'Syne', sans-serif",
-        }}>C</div>
-        <span style={{
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 800, fontSize: 22, color: "#fff",
-        }}>CareerPilot</span>
-      </div>
+          position: "absolute",
+          inset: 0, zIndex: 1,
+          background: "linear-gradient(135deg, rgba(200,24,122,0.25) 0%, rgba(123,47,247,0.25) 100%)",
+          pointerEvents: "none",
+        }} />
 
-      {/* Slogan central */}
-      <div style={{ zIndex: 1 }}>
+        {/* Contenu texte */}
         <div style={{
-          display: "inline-block",
-          background: "rgba(255,255,255,0.15)",
-          borderRadius: 50, padding: "6px 16px",
-          fontSize: 12, color: "#fff", marginBottom: 24,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          position: "relative", zIndex: 2,
+          display: "flex", flexDirection: "column",
+          justifyContent: "space-between",
+          padding: "48px 40px",
+          minHeight: "100vh",
         }}>
-          🚀 Propulsé par Groq AI + Whisper
-        </div>
-        <h1 style={{
-          fontFamily: "'Syne', sans-serif",
-          fontSize: 42, fontWeight: 800,
-          color: "#fff", lineHeight: 1.15,
-          margin: "0 0 20px",
-        }}>
-          Pilot your career<br />
-          with AI-driven<br />
-          intelligence.
-        </h1>
-        <p style={{
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: 15, color: "rgba(255,255,255,0.8)",
-          lineHeight: 1.7, maxWidth: 340,
-        }}>
-          Accédez à des analyses CV personnalisées,
-          un matching emploi en temps réel et une
-          simulation d'entretien vocale par IA.
-        </p>
-      </div>
-
-      {/* Badges utilisateurs */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12, zIndex: 1,
-      }}>
-        <div style={{ display: "flex" }}>
-          {["F", "A", "Y", "+"].map((l, i) => (
-            <div key={i} style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: i < 3 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
-              border: "2px solid rgba(255,255,255,0.4)",
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: "rgba(255,255,255,0.2)",
+              backdropFilter: "blur(8px)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700, color: "#fff",
-              marginLeft: i === 0 ? 0 : -10,
+              fontSize: 22, fontWeight: 800, color: "#fff",
               fontFamily: "'Syne', sans-serif",
-            }}>{l}</div>
-          ))}
+            }}>C</div>
+            <span style={{
+              fontFamily: "'Syne', sans-serif",
+              fontWeight: 800, fontSize: 22, color: "#fff",
+            }}>CareerPilot</span>
+          </div>
+
+          {/* Slogan */}
+          <div>
+            <div style={{
+              display: "inline-block",
+              background: "rgba(255,255,255,0.15)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 50, padding: "6px 16px",
+              fontSize: 12, color: "#fff", marginBottom: 24,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}>
+              🚀 Propulsé par Groq AI + Whisper
+            </div>
+            <h1 style={{
+              fontFamily: "'Syne', sans-serif",
+              fontSize: 42, fontWeight: 800,
+              color: "#fff", lineHeight: 1.15,
+              margin: "0 0 20px",
+              textShadow: "0 2px 20px rgba(0,0,0,0.4)",
+            }}>
+              Pilot your career<br />
+              with AI-driven<br />
+              intelligence.
+            </h1>
+            <p style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 15, color: "rgba(255,255,255,0.85)",
+              lineHeight: 1.7, maxWidth: 340,
+            }}>
+              Accédez à des analyses CV personnalisées,
+              un matching emploi en temps réel et une
+              simulation d'entretien vocale par IA.
+            </p>
+          </div>
+
+          {/* Badges */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex" }}>
+              {["F", "A", "Y", "+"].map((l, i) => (
+                <div key={i} style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(4px)",
+                  border: "2px solid rgba(255,255,255,0.4)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 700, color: "#fff",
+                  marginLeft: i === 0 ? 0 : -10,
+                  fontFamily: "'Syne', sans-serif",
+                }}>{l}</div>
+              ))}
+            </div>
+            <span style={{
+              fontSize: 13, color: "rgba(255,255,255,0.9)",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}>
+              Rejoins 10k+ professionnels
+            </span>
+          </div>
         </div>
-        <span style={{
-          fontSize: 13, color: "rgba(255,255,255,0.85)",
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-        }}>
-          Rejoins 10k+ professionnels
-        </span>
-      </div>
+      </Vortex>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');

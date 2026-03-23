@@ -15,6 +15,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Vortex } from "../../components/Vortex";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -68,87 +69,101 @@ function getPasswordStrength(password) {
 function LeftPanel() {
   return (
     <div style={{
-      flex:1,
-      background: COLORS.gradient,
-      display:"flex", flexDirection:"column",
-      justifyContent:"space-between",
-      padding:"48px 40px",
-      position:"relative", overflow:"hidden",
-      minHeight:"100vh",
+      flex: 1, position: "relative",
+      overflow: "hidden", minHeight: "100vh",
     }}>
-      {/* Décoration */}
-      <div style={{ position:"absolute", top:"-80px", right:"-80px",
-        width:300, height:300, borderRadius:"50%",
-        background:"rgba(255,255,255,0.08)" }} />
-      <div style={{ position:"absolute", bottom:"100px", left:"-60px",
-        width:220, height:220, borderRadius:"50%",
-        background:"rgba(255,255,255,0.05)" }} />
-
-      {/* Logo */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, zIndex:1 }}>
+      <Vortex
+        backgroundColor="#050308"
+        baseHue={260}
+        particleCount={700}
+        rangeY={300}
+        baseSpeed={0.3}
+        rangeSpeed={2}
+      >
+        {/* Overlay */}
         <div style={{
-          width:40, height:40, borderRadius:12,
-          background:"rgba(255,255,255,0.2)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:22, fontWeight:800, color:"#fff",
-          fontFamily:"'Syne',sans-serif",
-        }}>C</div>
-        <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:22, color:"#fff" }}>
-          CareerPilot
-        </span>
-      </div>
+          position: "absolute", inset: 0,
+          background: "linear-gradient(135deg, rgba(123,47,247,0.25) 0%, rgba(200,24,122,0.25) 100%)",
+          zIndex: 1,
+        }} />
 
-      {/* Slogan */}
-      <div style={{ zIndex:1 }}>
+        {/* Contenu */}
         <div style={{
-          display:"inline-flex", alignItems:"center", gap:6,
-          background:"rgba(255,255,255,0.15)",
-          borderRadius:50, padding:"6px 14px", marginBottom:24,
-          fontSize:12, color:"#fff",
-          fontFamily:"'Plus Jakarta Sans',sans-serif",
+          position: "relative", zIndex: 2,
+          display: "flex", flexDirection: "column",
+          justifyContent: "space-between",
+          padding: "48px 40px", minHeight: "100vh",
         }}>
-          <span style={{ width:7, height:7, borderRadius:"50%",
-            background:"#fff", display:"inline-block" }} />
-          Trusted by 50k+ Professionals
+          {/* Logo */}
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{
+              width:40, height:40, borderRadius:12,
+              background:"rgba(255,255,255,0.2)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:22, fontWeight:800, color:"#fff",
+              fontFamily:"'Syne',sans-serif",
+            }}>C</div>
+            <span style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:22, color:"#fff" }}>
+              CareerPilot
+            </span>
+          </div>
+
+          {/* Slogan */}
+          <div>
+            <div style={{
+              display:"inline-flex", alignItems:"center", gap:6,
+              background:"rgba(255,255,255,0.15)",
+              backdropFilter:"blur(8px)",
+              border:"1px solid rgba(255,255,255,0.2)",
+              borderRadius:50, padding:"6px 14px", marginBottom:24,
+              fontSize:12, color:"#fff",
+              fontFamily:"'Plus Jakarta Sans',sans-serif",
+            }}>
+              <span style={{ width:7, height:7, borderRadius:"50%",
+                background:"#fff", display:"inline-block" }} />
+              Trusted by 50k+ Professionals
+            </div>
+            <h1 style={{
+              fontFamily:"'Syne',sans-serif",
+              fontSize:38, fontWeight:800, color:"#fff",
+              lineHeight:1.15, margin:"0 0 20px",
+              textShadow:"0 2px 20px rgba(0,0,0,0.3)",
+            }}>
+              Chart your<br />course to<br />the top.
+            </h1>
+            <p style={{
+              fontFamily:"'Plus Jakarta Sans',sans-serif",
+              fontSize:15, color:"rgba(255,255,255,0.85)",
+              lineHeight:1.7, maxWidth:340,
+            }}>
+              Ton parcours professionnel mérite un co-pilote
+              qui comprend tes ambitions. Sécurise ton compte.
+            </p>
+          </div>
+
+          {/* Illustration */}
+          <div style={{
+            borderRadius:16, overflow:"hidden",
+            background:"rgba(255,255,255,0.1)",
+            backdropFilter:"blur(8px)",
+            border:"1px solid rgba(255,255,255,0.2)",
+            height:160, display:"flex",
+            alignItems:"center", justifyContent:"center",
+          }}>
+            <span style={{ fontSize:56 }}>🔐</span>
+          </div>
+
+          {/* Footer */}
+          <div style={{ display:"flex", gap:24 }}>
+            {["Politique de confidentialité", "Conditions d'utilisation"].map(l => (
+              <span key={l} style={{
+                fontSize:11, color:"rgba(255,255,255,0.6)",
+                cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
+              }}>{l}</span>
+            ))}
+          </div>
         </div>
-
-        <h1 style={{
-          fontFamily:"'Syne',sans-serif",
-          fontSize:38, fontWeight:800, color:"#fff",
-          lineHeight:1.15, margin:"0 0 20px",
-        }}>
-          Chart your<br />course to<br />the top.
-        </h1>
-
-        <p style={{
-          fontFamily:"'Plus Jakarta Sans',sans-serif",
-          fontSize:15, color:"rgba(255,255,255,0.8)",
-          lineHeight:1.7, maxWidth:340,
-        }}>
-          Ton parcours professionnel mérite un co-pilote
-          qui comprend tes ambitions. Sécurise ton compte.
-        </p>
-      </div>
-
-      {/* Illustration */}
-      <div style={{
-        zIndex:1, borderRadius:16, overflow:"hidden",
-        background:"rgba(255,255,255,0.1)",
-        height:160, display:"flex",
-        alignItems:"center", justifyContent:"center",
-      }}>
-        <span style={{ fontSize:56 }}>🔐</span>
-      </div>
-
-      {/* Footer */}
-      <div style={{ zIndex:1, display:"flex", gap:24 }}>
-        {["Politique de confidentialité", "Conditions d'utilisation"].map(l => (
-          <span key={l} style={{
-            fontSize:11, color:"rgba(255,255,255,0.6)",
-            cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-          }}>{l}</span>
-        ))}
-      </div>
+      </Vortex>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');

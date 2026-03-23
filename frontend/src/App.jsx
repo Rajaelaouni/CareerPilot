@@ -42,6 +42,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/*page d'acceuil */}
+        <Route path="/" element={<LandingPage />} />
         {/* Redirection racine vers login */}
         <Route path="/"          element={<Navigate to="/login" replace />} />
 
