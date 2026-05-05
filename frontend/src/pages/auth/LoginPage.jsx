@@ -271,36 +271,45 @@ export default function LoginPage() {
   }, [form]);
 
   /** Soumission du formulaire */
-  const handleSubmit = useCallback(async () => {
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    setLoading(true);
-    setApiError("");
+const handleSubmit = useCallback(async () => {
+  const newErrors = validate();
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
 
-    try {
-      // TODO: Remplacer par l'appel API réel
-      // const response = await fetch("/api/auth/login", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email: form.email, password: form.password }),
-      // });
-      // if (!response.ok) throw new Error("Identifiants incorrects");
-      // const data = await response.json();
-      // localStorage.setItem("token", data.token);
+  setLoading(true);
+  setApiError("");
 
-      // Simulation délai API
-      await new Promise(r => setTimeout(r, 1500));
-      setSuccess(true);
-      setTimeout(() => navigate("/dashboard"), 1000);
-    } catch (err) {
-      setApiError(err.message || "Erreur de connexion. Réessayez.");
-    } finally {
-      setLoading(false);
+  try {
+    const response = await fetch("http://localhost:8000/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Identifiants incorrects");
     }
-  }, [form, validate, navigate]);
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    setSuccess(true);
+    setTimeout(() => navigate("/dashboard"), 1000);
+  } catch (err) {
+    setApiError(err.message || "Erreur de connexion. Réessayez.");
+  } finally {
+    setLoading(false);
+  }
+}, [form, validate, navigate]);
 
   /** Connexion avec Google */
   const handleGoogle = useCallback(() => {

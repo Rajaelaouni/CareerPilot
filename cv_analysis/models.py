@@ -1,4 +1,3 @@
-# cv_analysis/models.py
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -23,3 +22,27 @@ class OptimizedCV(models.Model):
 
     def __str__(self):
         return f"Optimized CV for {self.cv.file_name}"
+
+
+class CVAnalysisResult(models.Model):
+    cv = models.OneToOneField(CV, on_delete=models.CASCADE, related_name='analysis_result')
+    status = models.CharField(max_length=20, default='analysed')
+
+    tech_relevance = models.PositiveIntegerField(default=0)
+    experience_score = models.PositiveIntegerField(default=0)
+    education_score = models.PositiveIntegerField(default=0)
+    structure_score = models.PositiveIntegerField(default=0)
+
+    technical_skills = models.JSONField(default=list, blank=True)
+    soft_skills = models.JSONField(default=list, blank=True)
+
+    present_keywords = models.JSONField(default=list, blank=True)
+    missing_keywords = models.JSONField(default=list, blank=True)
+    found_sections = models.JSONField(default=list, blank=True)
+
+    tips = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Analysis for {self.cv.file_name}"

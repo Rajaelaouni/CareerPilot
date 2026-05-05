@@ -13,6 +13,10 @@ import Dashboard   from './pages/Dashboard';
 import UploadCV    from './pages/UploadCV';
 import AnalysesCV  from './pages/AnalysesCV';
 import JobMatching  from './pages/JobMatching';
+import Parametres  from './pages/Parametres';
+import Profil      from './pages/Profil';
+import CVOptimise  from './pages/CVOptimise';
+import Entretien   from './pages/Entretien';
 
 function App() {
   return (
@@ -25,7 +29,11 @@ function App() {
          <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/upload"  element={<UploadCV />} />
         <Route path="/analyses" element={<AnalysesCV />} />
+        <Route path="/parametres"   element={<Parametres />} />
+        <Route path="/profil"    element={<Profil />} />
         <Route path="/matching" element={<JobMatching />} />
+        <Route path="/optimise"  element={<CVOptimise />} />
+        <Route path="/entretien" element={<Entretien />} />
       </Routes>
     </BrowserRouter>
   );

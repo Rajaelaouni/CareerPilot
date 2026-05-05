@@ -42,14 +42,22 @@ const NAV_ITEMS = [
   { id: "upload",     label: "Upload CV",    icon: Icons.upload,    path: "/upload"      },
   { id: "entretien",  label: "Entretien",    icon: Icons.entretien, path: "/entretien"   },
   { id: "matching",   label: "Job Matching", icon: Icons.matching,  path: "/matching"    },
-  { id: "cvoptimise", label: "CV Optimisé",  icon: Icons.cvopt,     path: "/cv-optimise" },
+  { id: "optimise", label: "CV Optimisé",  icon: Icons.cvopt,     path: "/optimise" },
   { id: "profil",     label: "Profil",       icon: Icons.profil,    path: "/profil"      },
 ];
 
 export default function Sidebar({ activePage }) {
   const [hovered, setHovered] = useState(null);
-  const go = path => { window.location.href = path; };
+const go = (path) => {
+  window.location.href = path;
+};
 
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("latest_analysis_id");
+  window.location.href = "/login";
+};
   return (
     <div style={{
       width: 240, minHeight: "100vh",
@@ -108,7 +116,7 @@ export default function Sidebar({ activePage }) {
 
       {/* Footer */}
       <div style={{ padding: "12px", borderTop: `1px solid ${C.border}` }}>
-        <button onClick={() => go("/settings")} style={{
+        <button onClick={() => go("/parametres")} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 12,
           padding: "10px 12px", borderRadius: 10, border: "none",
           cursor: "pointer", marginBottom: 4, background: "transparent",
@@ -118,16 +126,16 @@ export default function Sidebar({ activePage }) {
         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}>
           {Icons.settings} Paramètres
         </button>
-        <button onClick={() => go("/login")} style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 12,
-          padding: "10px 12px", borderRadius: 10, border: "none",
-          cursor: "pointer", marginBottom: 12, background: "transparent",
-          color: C.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.color = C.error; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}>
-          {Icons.logout} Déconnexion
-        </button>
+        <button onClick={handleLogout} style={{
+  width: "100%", display: "flex", alignItems: "center", gap: 12,
+  padding: "10px 12px", borderRadius: 10, border: "none",
+  cursor: "pointer", marginBottom: 12, background: "transparent",
+  color: C.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
+}}
+onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.color = C.error; }}
+onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}>
+  {Icons.logout} Déconnexion
+</button>
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
           padding: "10px 12px", borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`,
