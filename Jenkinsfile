@@ -1,15 +1,18 @@
 pipeline {
     agent any
 
-    environment {
-        PYTHON = 'python'
-    }
-
     stages {
 
         stage('Checkout Code') {
             steps {
+                deleteDir()
                 git branch: 'fati', url: 'https://github.com/Rajaelaouni/CareerPilot.git'
+            }
+        }
+
+        stage('Check Workspace') {
+            steps {
+                bat 'dir'
             }
         }
 
@@ -27,15 +30,20 @@ pipeline {
             }
         }
 
+        // ✅ CORRECTION ICI
         stage('Run Migrations') {
             steps {
-                bat 'python manage.py migrate'
+                dir('Backend') {
+                    bat 'python manage.py migrate'
+                }
             }
         }
 
         stage('Run Tests') {
             steps {
-                bat 'python manage.py test'
+                dir('Backend') {
+                    bat 'python manage.py test'
+                }
             }
         }
 
@@ -68,7 +76,7 @@ pipeline {
         }
 
         failure {
-            echo '❌ Pipeline échoué - vérifier logs'
+            echo '❌ Pipeline échoué - vérifier les logs'
         }
     }
 }
