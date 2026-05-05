@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        PYTHON = 'python'
+    }
+
     stages {
 
         stage('Checkout Code') {
@@ -9,42 +13,62 @@ pipeline {
             }
         }
 
+        stage('Check Python & Pip') {
+            steps {
+                bat 'python --version'
+                bat 'pip --version'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                bat 'python -m pip install --upgrade pip'
+                bat 'pip install -r requirements.txt'
             }
         }
 
         stage('Run Migrations') {
             steps {
-                sh 'python manage.py migrate'
+                bat 'python manage.py migrate'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'python manage.py test'
+                bat 'python manage.py test'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh 'sonar-scanner'
+                    bat 'sonar-scanner'
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t django-app .'
+                bat 'docker build -t django-app .'
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                sh 'docker run -d -p 8000:8000 django-app'
+                bat 'docker stop django-app || exit 0'
+                bat 'docker rm django-app || exit 0'
+                bat 'docker run -d -p 8000:8000 --name django-app django-app'
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline exécuté avec succès!'
+        }
+
+        failure {
+            echo '❌ Pipeline échoué - vérifier logs'
         }
     }
 }
