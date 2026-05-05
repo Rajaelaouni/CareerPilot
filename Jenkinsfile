@@ -31,13 +31,11 @@ pipeline {
         }
 
         // ✅ CORRECTION ICI
-        stage('Run Migrations') {
-            steps {
-                dir('Backend') {
-                    bat 'python manage.py migrate'
-                }
-            }
-        }
+       stage('Run Migrations') {
+    steps {
+        bat 'python manage.py migrate'
+    }
+}
 
         stage('Run Tests') {
             steps {
