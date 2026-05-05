@@ -1,0 +1,20 @@
+venv/
+node_modules/
+__pycache__/
+*.pyc
+db.sqlite3
+media/
+.env
+
+# Django
+*.log
+*.pot
+*.py[cod]
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
