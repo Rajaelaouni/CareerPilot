@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 import Sidebar, { C } from "./Sidebar";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 export default function UploadCV() {
+  const { theme } = useAppSettings();
+
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -92,15 +95,15 @@ export default function UploadCV() {
     b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: theme.bg, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
       <Sidebar activePage="upload" />
 
       <div style={{ marginLeft: 240, flex: 1, padding: "32px" }}>
         <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 26, fontWeight: 800, color: C.text, margin: "0 0 8px" }}>
+          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 26, fontWeight: 800, color: theme.text, margin: "0 0 8px" }}>
             Analyser votre CV
           </h1>
-          <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>
+          <p style={{ color: theme.muted, fontSize: 14, margin: 0 }}>
             Optimisez votre CV pour les systèmes ATS avec notre IA de pointe. Obtenez un retour instantané.
           </p>
         </div>
@@ -115,12 +118,12 @@ export default function UploadCV() {
             onDrop={handleDrop}
             onClick={() => !file && inputRef.current?.click()}
             style={{
-              border: `2px dashed ${dragging ? C.primary : file ? C.success : C.border}`,
+              border: `2px dashed ${dragging ? C.primary : file ? C.success : theme.border}`,
               borderRadius: 20,
               padding: "48px 32px",
               textAlign: "center",
               cursor: file ? "default" : "pointer",
-              background: dragging ? "#FCE4F3" : file ? "#F0FDF4" : C.card,
+              background: dragging ? "#FCE4F3" : file ? "#F0FDF4" : theme.card,
               transition: "all 0.3s",
               boxShadow: dragging ? `0 0 0 4px ${C.primary}18` : "0 2px 8px rgba(0,0,0,0.04)",
               marginBottom: 24,
@@ -141,7 +144,7 @@ export default function UploadCV() {
                     width: 64,
                     height: 64,
                     borderRadius: "50%",
-                    background: dragging ? C.gradient : C.gradientLight,
+                    background: dragging ? theme.gradient : theme.gradientLight,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -156,10 +159,10 @@ export default function UploadCV() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 </div>
-                <p style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 700, color: C.text, margin: "0 0 8px" }}>
+                <p style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 700, color: theme.text, margin: "0 0 8px" }}>
                   Glissez votre CV ici ou cliquez pour parcourir
                 </p>
-                <p style={{ color: C.muted, fontSize: 13, margin: "0 0 20px" }}>PDF, DOCX — Max 5MB</p>
+                <p style={{ color: theme.muted, fontSize: 13, margin: "0 0 20px" }}>PDF, DOCX — Max 5MB</p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -191,10 +194,10 @@ export default function UploadCV() {
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
                 </div>
-                <p style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 700, color: C.text, margin: "0 0 4px" }}>
+                <p style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 700, color: theme.text, margin: "0 0 4px" }}>
                   {file.name}
                 </p>
-                <p style={{ color: C.muted, fontSize: 13, margin: "0 0 16px" }}>{fmtSize(file.size)}</p>
+                <p style={{ color: theme.muted, fontSize: 13, margin: "0 0 16px" }}>{fmtSize(file.size)}</p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -205,8 +208,8 @@ export default function UploadCV() {
                   }}
                   style={{
                     background: "transparent",
-                    border: `1px solid ${C.border}`,
-                    color: C.muted,
+                    border: `1px solid ${theme.border}`,
+                    color: theme.muted,
                     borderRadius: 8,
                     padding: "6px 16px",
                     fontSize: 12,
@@ -237,15 +240,15 @@ export default function UploadCV() {
           )}
 
           {(loading || done) && (
-            <div style={{ marginBottom: 24, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 20px" }}>
+            <div style={{ marginBottom: 24, background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: "16px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{file?.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{file?.name}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: done ? C.success : C.primary, fontFamily: "'Syne',sans-serif" }}>
                   {progress}%
                 </span>
               </div>
-              <div style={{ height: 8, borderRadius: 4, background: C.border, overflow: "hidden" }}>
-                <div style={{ height: "100%", borderRadius: 4, background: done ? C.success : C.gradient, width: `${progress}%`, transition: "width 0.2s ease" }} />
+              <div style={{ height: 8, borderRadius: 4, background: theme.border, overflow: "hidden" }}>
+                <div style={{ height: "100%", borderRadius: 4, background: done ? C.success : theme.gradient, width: `${progress}%`, transition: "width 0.2s ease" }} />
               </div>
               {done && (
                 <p style={{ color: C.success, fontSize: 12, fontWeight: 600, margin: "8px 0 0", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
@@ -260,9 +263,9 @@ export default function UploadCV() {
             disabled={!file || loading || done}
             style={{
               width: "100%",
-              background: !file || loading || done ? C.border : C.gradient,
+              background: !file || loading || done ? theme.border : theme.gradient,
               border: "none",
-              color: !file || loading || done ? C.muted : "#fff",
+              color: !file || loading || done ? theme.muted : "#fff",
               fontSize: 15,
               fontWeight: 700,
               padding: "16px",

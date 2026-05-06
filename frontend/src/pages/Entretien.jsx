@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Sidebar, { C } from "./Sidebar";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 const QUESTIONS = [
   "Décrivez votre expérience avec React et les architectures microservices.",
@@ -43,7 +44,9 @@ function WaveAnimation({ active }) {
 }
 
 export default function Entretien() {
-  const [status,    setStatus]    = useState("idle"); // idle | active | listening | done
+  const { theme } = useAppSettings();
+
+  const [status,    setStatus]    = useState("idle");
   const [qIndex,    setQIndex]    = useState(0);
   const [timer,     setTimer]     = useState(0);
   const [progress,  setProgress]  = useState([1]);
@@ -76,24 +79,23 @@ export default function Entretien() {
   };
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", background:C.bg, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+    <div style={{ display:"flex", minHeight:"100vh", background:theme.bg, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0}`}</style>
       <Sidebar activeId="entretien" />
 
       <main style={{ marginLeft:220, flex:1, padding:"32px 40px", overflowY:"auto" }}>
-        {/* Header */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
           <div>
-            <div style={{ fontSize:13, color:C.muted, marginBottom:6 }}>CareerPilot / Entretien</div>
-            <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:C.text, margin:0 }}>
+            <div style={{ fontSize:13, color:theme.muted, marginBottom:6 }}>CareerPilot / Entretien</div>
+            <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:theme.text, margin:0 }}>
               Simulation d'Entretien Vocal
             </h1>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             {status !== "idle" && (
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:13, color:C.muted }}>Développeur Full Stack</span>
-                <span style={{ fontSize:13, color:C.muted }}>⏱ {fmt(timer)}</span>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:13, color:theme.muted }}>Développeur Full Stack</span>
+                <span style={{ fontSize:13, color:theme.muted }}>⏱ {fmt(timer)}</span>
               </div>
             )}
             {(status==="active"||status==="listening") && (
@@ -106,14 +108,12 @@ export default function Entretien() {
         </div>
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:24 }}>
-          {/* Zone principale */}
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {status === "idle" ? (
-              /* Écran de démarrage */
               <div style={{ background:C.sidebarBg||"#0F0A1E", borderRadius:24, padding:48, textAlign:"center" }}>
                 <div style={{
                   width:80, height:80, borderRadius:"50%",
-                  background:C.gradient, margin:"0 auto 24px",
+                  background:theme.gradient, margin:"0 auto 24px",
                   display:"flex", alignItems:"center", justifyContent:"center",
                   boxShadow:"0 0 40px rgba(200,24,122,0.4)",
                 }}>
@@ -132,7 +132,7 @@ export default function Entretien() {
                   ))}
                 </div>
                 <button onClick={handleStart} style={{
-                  background:C.gradient, border:"none", color:"#fff",
+                  background:theme.gradient, border:"none", color:"#fff",
                   fontSize:15, fontWeight:700, padding:"14px 36px", borderRadius:14,
                   cursor:"pointer", fontFamily:"'Syne',sans-serif",
                   boxShadow:"0 8px 24px rgba(200,24,122,0.4)",
@@ -141,9 +141,7 @@ export default function Entretien() {
                 </button>
               </div>
             ) : (
-              /* Écran entretien actif */
               <div style={{ background:"#0F0A1E", borderRadius:24, padding:32, minHeight:380 }}>
-                {/* Animation onde */}
                 <div style={{ textAlign:"center", marginBottom:24 }}>
                   <div style={{
                     width:64, height:64, borderRadius:"50%",
@@ -159,7 +157,6 @@ export default function Entretien() {
                   </span>
                 </div>
 
-                {/* Question */}
                 <div style={{ textAlign:"center", marginBottom:24 }}>
                   <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:12, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
                     Question {qIndex+1} sur {QUESTIONS.length}
@@ -174,7 +171,6 @@ export default function Entretien() {
                   </div>
                 </div>
 
-                {/* Transcription */}
                 {transcript && (
                   <div style={{ background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"12px 16px", marginBottom:16, border:"1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ fontSize:11, color:C.primary, fontFamily:"'Syne',sans-serif", marginBottom:6 }}>TRANSCRIPTION LIVE</div>
@@ -184,7 +180,6 @@ export default function Entretien() {
                   </div>
                 )}
 
-                {/* Conseil */}
                 {status === "active" && (
                   <div style={{ display:"flex", gap:10, background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"10px 14px", border:"1px solid rgba(255,255,255,0.06)" }}>
                     <span style={{ fontSize:16 }}>💡</span>
@@ -194,11 +189,10 @@ export default function Entretien() {
                   </div>
                 )}
 
-                {/* Bouton répondre */}
                 {status === "active" && (
                   <div style={{ textAlign:"center", marginTop:24 }}>
                     <button onClick={handleAnswer} style={{
-                      background:C.gradient, border:"none", color:"#fff",
+                      background:theme.gradient, border:"none", color:"#fff",
                       fontSize:14, fontWeight:700, padding:"12px 28px", borderRadius:12,
                       cursor:"pointer", fontFamily:"'Syne',sans-serif",
                       display:"inline-flex", alignItems:"center", gap:10,
@@ -212,16 +206,15 @@ export default function Entretien() {
               </div>
             )}
 
-            {/* Progression */}
             {status !== "idle" && (
-              <div style={{ background:C.card, borderRadius:16, padding:20, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:13, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginRight:4 }}>PROGRESSION</span>
+              <div style={{ background:theme.card, borderRadius:16, padding:20, border:`1px solid ${theme.border}`, display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:13, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginRight:4 }}>PROGRESSION</span>
                 {QUESTIONS.map((_,i) => (
                   <div key={i} style={{
                     width:32, height:32, borderRadius:"50%", fontSize:13, fontWeight:700,
                     display:"flex", alignItems:"center", justifyContent:"center",
-                    background: progress.includes(i+1) ? C.gradient : C.border,
-                    color: progress.includes(i+1) ? "#fff" : C.muted,
+                    background: progress.includes(i+1) ? theme.gradient : theme.border,
+                    color: progress.includes(i+1) ? "#fff" : theme.muted,
                     fontFamily:"'Syne',sans-serif",
                     boxShadow: progress.includes(i+1) ? "0 2px 8px rgba(200,24,122,0.3)" : "none",
                     border: i+1 === qIndex+1 && status!=="idle" ? `2px solid ${C.primary}` : "none",
@@ -232,56 +225,51 @@ export default function Entretien() {
             )}
           </div>
 
-          {/* Feedback temps réel */}
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            <div style={{ background:C.card, borderRadius:20, padding:20, border:`1px solid ${C.border}` }}>
-              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:700, color:C.text, margin:"0 0 20px" }}>FEEDBACK EN TEMPS RÉEL</h3>
+            <div style={{ background:theme.card, borderRadius:20, padding:20, border:`1px solid ${theme.border}` }}>
+              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:700, color:theme.text, margin:"0 0 20px" }}>FEEDBACK EN TEMPS RÉEL</h3>
 
-              {/* Rythme vocal */}
               <div style={{ marginBottom:16 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <span style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>RYTHME VOCAL</span>
+                  <span style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>RYTHME VOCAL</span>
                   <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:50, background:"#DCFCE7", color:"#16A34A", fontFamily:"'Syne',sans-serif" }}>OPTIMAL</span>
                 </div>
-                <div style={{ height:6, background:C.border, borderRadius:3, overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:3, background:C.gradient, width:`${rythme}%`, transition:"width 0.5s" }} />
+                <div style={{ height:6, background:theme.border, borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ height:"100%", borderRadius:3, background:theme.gradient, width:`${rythme}%`, transition:"width 0.5s" }} />
                 </div>
-                <div style={{ fontSize:11, color:C.muted, marginTop:4, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Élocution fluide et posée</div>
+                <div style={{ fontSize:11, color:theme.muted, marginTop:4, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Élocution fluide et posée</div>
               </div>
 
-              {/* Ton & Attitude */}
               <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:10 }}>TON & ATTITUDE</div>
+                <div style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:10 }}>TON & ATTITUDE</div>
                 {[{label:"ASSURANCE",val:assurance,color:C.primary},{label:"CLARTÉ",val:clarte,color:C.secondary}].map(m => (
                   <div key={m.label} style={{ marginBottom:10 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                      <span style={{ fontSize:11, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{m.label}</span>
+                      <span style={{ fontSize:11, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{m.label}</span>
                       <span style={{ fontSize:11, fontWeight:700, color:m.color, fontFamily:"'Syne',sans-serif" }}>{m.val}%</span>
                     </div>
-                    <div style={{ height:5, background:C.border, borderRadius:3, overflow:"hidden" }}>
+                    <div style={{ height:5, background:theme.border, borderRadius:3, overflow:"hidden" }}>
                       <div style={{ height:"100%", borderRadius:3, background:m.color, width:`${m.val}%`, transition:"width 0.5s" }} />
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Mots-clés */}
               <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:8 }}>MOTS-CLÉS DÉTECTÉS</div>
+                <div style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:8 }}>MOTS-CLÉS DÉTECTÉS</div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                   {MOTS_CLES.slice(0, status==="active" ? 3 : 0).map(k => (
-                    <span key={k} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:50, background:C.gradientLight, color:C.primary, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{k}</span>
+                    <span key={k} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:50, background:theme.gradientLight, color:C.primary, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{k}</span>
                   ))}
-                  {status==="idle" && <span style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Démarrez l'entretien</span>}
+                  {status==="idle" && <span style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Démarrez l'entretien</span>}
                 </div>
               </div>
             </div>
 
-            {/* Bouton aide */}
             {status !== "idle" && (
               <button style={{
-                background:C.card, border:`1px solid ${C.border}`,
-                color:C.muted, fontSize:13, fontWeight:600, padding:"12px",
+                background:theme.card, border:`1px solid ${theme.border}`,
+                color:theme.muted, fontSize:13, fontWeight:600, padding:"12px",
                 borderRadius:12, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
                 display:"flex", alignItems:"center", justifyContent:"center", gap:8,
               }}>

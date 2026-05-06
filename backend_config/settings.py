@@ -95,7 +95,7 @@ DATABASES = {
         'NAME': 'PFAdb',
         'USER': 'postgres',
         'PASSWORD': 'cesar',
-        'HOST': 'host.docker.internal',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }

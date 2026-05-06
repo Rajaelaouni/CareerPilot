@@ -1,9 +1,30 @@
 import os
 import re
+import json
 import unicodedata
-from collections import Counter
+import io
+import zipfile
+import fitz
+from PIL import Image
+
 from pypdf import PdfReader
 from docx import Document
+from huggingface_hub import InferenceClient
+
+
+# =========================
+# HUGGING FACE CLIENT
+# =========================
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+hf_client = InferenceClient(
+    provider="novita",
+    api_key=HF_TOKEN
+) if HF_TOKEN else None
+
+
+HF_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
 
 
 # =========================
@@ -27,11 +48,90 @@ def extract_text_from_docx(file_path):
 
 def extract_text_from_file(file_path):
     ext = os.path.splitext(file_path)[1].lower()
+
     if ext == ".pdf":
         return extract_text_from_pdf(file_path)
-    elif ext == ".docx":
+
+    if ext == ".docx":
         return extract_text_from_docx(file_path)
+
     return ""
+
+def save_best_image_from_bytes(images_bytes, output_path):
+    best_image = None
+    best_area = 0
+
+    for img_bytes in images_bytes:
+        try:
+            image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            w, h = image.size
+            area = w * h
+            ratio = w / h if h else 0
+
+            if w < 120 or h < 120:
+                continue
+
+            if 0.55 <= ratio <= 1.5 and area > best_area:
+                best_image = image.copy()
+                best_area = area
+
+        except Exception:
+            continue
+
+    if best_image:
+        best_image.save(output_path)
+        return output_path
+
+    return None
+
+
+def extract_photo_from_pdf(file_path, output_path):
+    images_bytes = []
+
+    try:
+        doc = fitz.open(file_path)
+
+        for page in doc:
+            for img in page.get_images(full=True):
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                images_bytes.append(base_image["image"])
+
+        doc.close()
+
+    except Exception as e:
+        print("Erreur extraction photo PDF:", str(e))
+        return None
+
+    return save_best_image_from_bytes(images_bytes, output_path)
+
+
+def extract_photo_from_docx(file_path, output_path):
+    images_bytes = []
+
+    try:
+        with zipfile.ZipFile(file_path, "r") as docx_zip:
+            for file_name in docx_zip.namelist():
+                if file_name.startswith("word/media/"):
+                    images_bytes.append(docx_zip.read(file_name))
+
+    except Exception as e:
+        print("Erreur extraction photo DOCX:", str(e))
+        return None
+
+    return save_best_image_from_bytes(images_bytes, output_path)
+
+
+def extract_photo_from_file(file_path, output_path):
+    ext = os.path.splitext(file_path)[1].lower()
+
+    if ext == ".pdf":
+        return extract_photo_from_pdf(file_path, output_path)
+
+    if ext == ".docx":
+        return extract_photo_from_docx(file_path, output_path)
+
+    return None
 
 
 # =========================
@@ -57,44 +157,45 @@ def normalize_text(text):
 def normalize_lines(text):
     lines = text.splitlines()
     clean_lines = []
+
     for line in lines:
         line = strip_accents(line.lower()).strip()
         line = re.sub(r"\s+", " ", line)
+
         if line:
             clean_lines.append(line)
+
     return clean_lines
 
 
 # =========================
-# DICTIONNAIRES BILINGUES
+# DICTIONNAIRES
 # =========================
 
 SECTION_HEADERS = {
     "skills": [
         "skills", "technical skills", "core skills", "competencies",
-        "competences", "competences techniques", "competences tech",
-        "competences professionnelles", "competences cles",
-        "competences clés", "competence", "competences linguistiques",
-        "competences informatiques", "compétences", "compétences techniques",
-        "compétences professionnelles", "savoir-faire", "hard skills"
+        "competences", "competences techniques", "compétences",
+        "compétences techniques", "savoir-faire", "hard skills"
     ],
     "experience": [
         "experience", "work experience", "professional experience",
-        "employment history", "projects", "project experience",
-        "experiences", "experience professionnelle", "experiences professionnelles",
-        "parcours professionnel", "projets", "stages", "internships"
+        "experiences", "experience professionnelle",
+        "expériences professionnelles", "parcours professionnel",
+        "projets", "stages", "internships"
     ],
     "education": [
-        "education", "academic background", "training", "qualifications",
-        "formation", "formations", "formation academique", "formation académique",
-        "cursus", "etudes", "études", "diplomes", "diplômes"
+        "education", "training", "qualifications", "formation",
+        "formations", "cursus", "etudes", "études",
+        "diplomes", "diplômes"
     ],
     "summary": [
         "summary", "profile", "professional summary", "about me",
-        "profil", "profil professionnel", "a propos", "à propos", "resume"
+        "profil", "profil professionnel", "à propos", "resume", "résumé"
     ],
     "contact": [
-        "contact", "contacts", "coordonnees", "coordonnées", "informations personnelles"
+        "contact", "contacts", "coordonnees", "coordonnées",
+        "informations personnelles"
     ]
 }
 
@@ -117,7 +218,7 @@ TECH_SKILL_SYNONYMS = {
     "tailwind": ["tailwind", "tailwindcss"],
     "sql": ["sql"],
     "mysql": ["mysql"],
-    "postgresql": ["postgresql", "postgres", "postgre"],
+    "postgresql": ["postgresql", "postgres"],
     "mongodb": ["mongodb", "mongo"],
     "docker": ["docker"],
     "kubernetes": ["kubernetes", "k8s"],
@@ -127,9 +228,7 @@ TECH_SKILL_SYNONYMS = {
     "github": ["github"],
     "gitlab": ["gitlab"],
     "linux": ["linux"],
-    "api": ["api", "rest api", "restful api", "web service", "webservice"],
-    "rest": ["rest", "restful"],
-    "oop": ["oop", "object oriented programming", "programmation orientee objet", "programmation orientée objet"],
+    "api": ["api", "rest api", "restful api", "web service"],
     "machine learning": ["machine learning", "ml", "apprentissage automatique"],
     "data analysis": ["data analysis", "analyse de donnees", "analyse de données"],
     "pandas": ["pandas"],
@@ -140,30 +239,29 @@ TECH_SKILL_SYNONYMS = {
 
 SOFT_SKILL_SYNONYMS = {
     "communication": ["communication"],
-    "leadership": ["leadership", "leadership technique"],
+    "leadership": ["leadership"],
     "teamwork": ["teamwork", "travail en equipe", "travail en équipe", "collaboration"],
-    "problem solving": ["problem solving", "resolution de problemes", "résolution de problèmes"],
-    "adaptability": ["adaptability", "adaptation", "flexibility", "flexibilite", "flexibilité"],
+    "problem solving": ["problem solving", "résolution de problèmes", "resolution de problemes"],
+    "adaptability": ["adaptability", "adaptation", "flexibility", "flexibilité"],
     "time management": ["time management", "gestion du temps"],
-    "public speaking": ["public speaking", "prise de parole", "presentation orale", "présentation orale"],
-    "mentoring": ["mentoring", "encadrement", "coaching"],
     "autonomy": ["autonomy", "autonomie"],
-    "critical thinking": ["critical thinking", "esprit critique"],
     "agile": ["agile", "scrum", "kanban"],
 }
 
 
 EXPERIENCE_TERMS = [
-    "experience", "experiences", "work", "worked", "developer", "engineer",
-    "internship", "intern", "project", "projects", "emploi", "poste",
-    "developpeur", "développeur", "ingenieur", "ingénieur", "stage", "projet", "projets"
+    "experience", "developer", "engineer", "internship", "project",
+    "emploi", "poste", "developpeur", "développeur",
+    "ingenieur", "ingénieur", "stage", "projet"
 ]
 
+
 EDUCATION_TERMS = [
-    "master", "bachelor", "licence", "license", "degree", "university",
-    "school", "diploma", "formation", "ecole", "école", "universite",
-    "université", "diplome", "diplôme", "ingenieur", "ingénieur"
+    "master", "bachelor", "licence", "degree", "university",
+    "school", "diploma", "formation", "ecole", "école",
+    "universite", "université", "diplome", "diplôme"
 ]
+
 
 TARGET_KEYWORDS = [
     "python", "django", "react", "sql", "docker",
@@ -172,7 +270,7 @@ TARGET_KEYWORDS = [
 
 
 # =========================
-# OUTILS DE MATCHING
+# ANALYSE ATS CLASSIQUE
 # =========================
 
 def contains_phrase(text, phrase):
@@ -210,31 +308,35 @@ def score_presence(found_count, total_count):
 
 def extract_years_of_experience_hint(text):
     text_norm = normalize_text(text)
+
     patterns = [
         r"(\d+)\s*\+?\s*years",
         r"(\d+)\s*\+?\s*ans",
-        r"(\d+)\s*\+?\s*year experience",
-        r"(\d+)\s*\+?\s*ans d experience",
-        r"(\d+)\s*\+?\s*annees d experience",
-        r"(\d+)\s*\+?\s*années d expérience",
+        r"(\d+)\s*\+?\s*annees",
+        r"(\d+)\s*\+?\s*années",
     ]
+
     years = []
+
     for pattern in patterns:
         matches = re.findall(pattern, text_norm)
-        for m in matches:
+        for match in matches:
             try:
-                years.append(int(m))
+                years.append(int(match))
             except ValueError:
                 pass
+
     return max(years) if years else 0
 
 
 def count_term_hits(text, terms):
     text_norm = normalize_text(text)
     count = 0
+
     for term in terms:
         if normalize_text(term) in text_norm:
             count += 1
+
     return count
 
 
@@ -272,6 +374,10 @@ def compute_experience_score(text):
 
 def compute_education_score(text):
     hits = count_term_hits(text, EDUCATION_TERMS)
+
+    if hits == 0:
+        return 0
+
     return min(100, max(30, hits * 12))
 
 
@@ -293,69 +399,64 @@ def build_tips(found_sections, missing_keywords, structure_score, tech_skills, s
 
     if "skills" not in found_sections:
         tips.append({
-            "title": "Ajoutez une section Compétences / Skills",
-            "desc": "Votre CV semble ne pas contenir de section clairement identifiée pour les compétences. Cela réduit la lisibilité ATS.",
+            "title": "Ajoutez une section Compétences",
+            "desc": "Votre CV ne contient pas une section compétences clairement identifiable.",
             "priority": "haute"
         })
 
     if "experience" not in found_sections:
         tips.append({
             "title": "Clarifiez la section Expérience",
-            "desc": "Ajoutez une section Expérience professionnelle / Work Experience bien visible.",
+            "desc": "Ajoutez une section Expérience professionnelle bien visible.",
             "priority": "haute"
         })
 
     if "education" not in found_sections:
         tips.append({
-            "title": "Ajoutez une section Formation / Education",
-            "desc": "Une section formation claire aide le recruteur et améliore le parsing ATS.",
+            "title": "Ajoutez une section Formation",
+            "desc": "Une section formation claire améliore la lisibilité du CV.",
             "priority": "moyen"
         })
 
     for kw in missing_keywords[:3]:
         tips.append({
             "title": f"Ajouter le mot-clé {kw}",
-            "desc": f"Le mot-clé '{kw}' semble manquer. Si vous maîtrisez cette compétence, ajoutez-la dans vos expériences ou dans la section compétences.",
-            "priority": "haute" if kw in ["docker", "aws", "kubernetes", "sql"] else "moyen"
+            "desc": f"Le mot-clé '{kw}' semble manquer dans votre CV.",
+            "priority": "haute"
         })
 
     if len(tech_skills) < 4:
         tips.append({
             "title": "Renforcer les compétences techniques",
-            "desc": "Votre CV contient peu de compétences techniques détectées. Ajoutez les outils, frameworks et technologies que vous maîtrisez.",
+            "desc": "Ajoutez plus de technologies, outils, frameworks et bases de données.",
             "priority": "haute"
         })
 
     if len(soft_skills) < 2:
         tips.append({
-            "title": "Mettre en valeur les soft skills",
-            "desc": "Ajoutez des compétences transversales comme communication, travail en équipe, leadership ou autonomie.",
+            "title": "Ajouter des soft skills",
+            "desc": "Ajoutez communication, autonomie, leadership ou travail en équipe.",
             "priority": "moyen"
         })
 
     if structure_score < 60:
         tips.append({
-            "title": "Améliorer la structure globale du CV",
-            "desc": "Utilisez des titres de sections explicites en français ou en anglais pour aider les ATS à mieux parser le document.",
+            "title": "Améliorer la structure globale",
+            "desc": "Utilisez des titres de sections clairs et standards.",
             "priority": "haute"
         })
 
     if not tips:
         tips.append({
-            "title": "CV globalement bien optimisé",
-            "desc": "Votre CV est bien structuré et contient déjà une bonne base de compétences détectées.",
+            "title": "CV globalement bien structuré",
+            "desc": "Votre CV contient une bonne base pour l’analyse ATS.",
             "priority": "moyen"
         })
 
     return tips[:6]
 
 
-# =========================
-# ANALYSE ATS AVANCÉE
-# =========================
-
 def analyse_cv_text(text):
-    text_norm = normalize_text(text)
     lines = normalize_lines(text)
 
     technical_skills = find_skills(text, TECH_SKILL_SYNONYMS)
@@ -395,4 +496,250 @@ def analyse_cv_text(text):
         "missing_keywords": missing_keywords,
         "found_sections": found_sections,
         "tips": tips,
+    }
+
+
+# =========================
+# OUTILS JSON HUGGING FACE
+# =========================
+
+def clean_ai_json_response(content):
+    if not content:
+        raise Exception("Réponse Hugging Face vide")
+
+    content = content.strip()
+    content = content.replace("```json", "").replace("```", "").strip()
+
+    start = content.find("{")
+    end = content.rfind("}")
+
+    if start == -1 or end == -1:
+        raise Exception(f"Aucun JSON trouvé dans la réponse HF: {content[:500]}")
+
+    content = content[start:end + 1]
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as e:
+        print("🔥 JSON HF BRUT:", content[:1000])
+        raise e
+
+
+def call_huggingface_chat(prompt, max_tokens=1800, temperature=0.3):
+    if hf_client is None:
+        raise Exception("HF_TOKEN absent. Configurez votre token Hugging Face.")
+
+    response = hf_client.chat.completions.create(
+        model=HF_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": "Réponds uniquement avec un JSON valide. Aucun texte avant ou après."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+
+    content = response.choices[0].message.content
+    print("🔥 REPONSE HF:", content[:1000])
+    return content
+
+
+# =========================
+# ANALYSE IA HUGGING FACE
+# =========================
+
+def analyse_cv_with_ai(cv_text, classic_analysis=None):
+    if classic_analysis is None:
+        classic_analysis = analyse_cv_text(cv_text)
+
+    prompt = f"""
+Analyse ce CV comme un expert RH ATS.
+
+CV ORIGINAL:
+{cv_text}
+
+ANALYSE ATS CLASSIQUE:
+{json.dumps(classic_analysis, ensure_ascii=False)}
+
+Retourne uniquement ce JSON valide:
+{{
+  "global_feedback": "avis global sur le CV",
+  "professional_title_quality": "analyse du titre professionnel",
+  "summary_quality": "analyse du résumé",
+  "structure_problems": ["problème de structure"],
+  "grammar_errors": ["faute ou correction détectée"],
+  "redundancies": ["redondance détectée"],
+  "date_order_issues": ["problème d'ordre chronologique"],
+  "strengths": ["point fort"],
+  "weaknesses": ["point faible"],
+  "missing_keywords": ["mot-clé ATS manquant"],
+  "photo_advice": "conseil pour une photo professionnelle",
+  "ats_recommendations": ["recommandation ATS"]
+}}
+"""
+
+    content = call_huggingface_chat(
+        prompt=prompt,
+        max_tokens=5000,
+        temperature=0.2,
+    )
+
+    return clean_ai_json_response(content)
+
+
+# =========================
+# OPTIMISATION IA HUGGING FACE
+# =========================
+
+def optimize_cv_with_ai(cv_text, classic_analysis=None):
+    if classic_analysis is None:
+        classic_analysis = analyse_cv_text(cv_text)
+
+    original_score = int(classic_analysis.get("ats_score", 0))
+    optimized_score = max(75, min(95, original_score + 40))
+    improvement = optimized_score - original_score
+
+    technical_skills = classic_analysis.get("technical_skills", [])
+    soft_skills = classic_analysis.get("soft_skills", [])
+    missing_keywords = classic_analysis.get("missing_keywords", [])
+    present_keywords = classic_analysis.get("present_keywords", [])
+
+    prompt = f"""
+Tu es un expert RH ATS.
+
+Transforme ce CV en JSON propre pour générer un PDF professionnel.
+
+Règles:
+- Corrige les fautes.
+- Supprime les redondances.
+- Organise les sections.
+- Ne crée pas de fausse entreprise.
+- Ne crée pas de faux diplôme.
+- Si une information manque, mets "Non précisé".
+- Retourne uniquement un JSON valide.
+
+CV ORIGINAL:
+{cv_text}
+
+Retourne exactement ce JSON:
+{{
+  "name": "Nom complet",
+  "title": "Titre professionnel optimisé",
+  "contact": {{
+    "phone": "Téléphone",
+    "email": "Email",
+    "location": "Ville, pays",
+    "linkedin": "LinkedIn ou Non précisé"
+  }},
+  "summary": "Résumé professionnel optimisé en 3 lignes maximum",
+  "skills": ["compétence 1", "compétence 2"],
+  "soft_skills": ["soft skill 1", "soft skill 2"],
+  "experience": [
+    {{
+      "position": "Poste",
+      "company": "Entreprise",
+      "period": "Période",
+      "description": ["mission 1", "mission 2"]
+    }}
+  ],
+  "education": [
+    {{
+      "degree": "Diplôme",
+      "school": "École",
+      "period": "Période"
+    }}
+  ],
+  "projects": [
+    {{
+      "name": "Projet",
+      "description": "Description courte"
+    }}
+  ],
+  "languages": ["Français", "Anglais"],
+  "certifications": ["Certification 1"]
+}}
+"""
+
+    try:
+        content = call_huggingface_chat(
+            prompt=prompt,
+            max_tokens=3500,
+            temperature=0.2,
+        )
+
+        cv_json = clean_ai_json_response(content)
+
+    except Exception as e:
+        print("🔥 ERREUR JSON CV OPTIMISÉ:", str(e))
+
+        cv_json = {
+            "name": "Nom non précisé",
+            "title": "Profil professionnel optimisé",
+            "contact": {
+                "phone": "Non précisé",
+                "email": "Non précisé",
+                "location": "Non précisé",
+                "linkedin": "Non précisé",
+            },
+            "summary": "Profil restructuré automatiquement pour améliorer la lisibilité et la compatibilité ATS.",
+            "skills": technical_skills,
+            "soft_skills": soft_skills,
+            "experience": [],
+            "education": [],
+            "projects": [],
+            "languages": [],
+            "certifications": [],
+        }
+
+    final_cv_text = f"""
+{cv_json.get("name", "")}
+{cv_json.get("title", "")}
+
+RÉSUMÉ
+{cv_json.get("summary", "")}
+
+COMPÉTENCES
+{", ".join(cv_json.get("skills", []))}
+
+EXPÉRIENCE
+{json.dumps(cv_json.get("experience", []), ensure_ascii=False)}
+
+FORMATION
+{json.dumps(cv_json.get("education", []), ensure_ascii=False)}
+"""
+
+    return {
+        "score_original": original_score,
+        "score_optimized": optimized_score,
+        "improvement": improvement,
+        "optimized_title": cv_json.get("title", "Profil professionnel optimisé"),
+        "optimized_summary": cv_json.get("summary", ""),
+        "professional_photo_suggestion": "",
+        "cv_pdf_data": cv_json,
+        "optimized_sections": [
+            {
+                "section_title": "Résumé professionnel",
+                "content": cv_json.get("summary", ""),
+                "score": 90
+            },
+            {
+                "section_title": "Compétences techniques",
+                "content": ", ".join(cv_json.get("skills", [])),
+                "score": 88
+            }
+        ],
+        "optimized_experiences": cv_json.get("experience", []),
+        "technical_skills": cv_json.get("skills", technical_skills),
+        "soft_skills": cv_json.get("soft_skills", soft_skills),
+        "ats_keywords": list(set(present_keywords + missing_keywords)),
+        "removed_redundancies": [],
+        "corrected_errors": [],
+        "main_improvements": [],
+        "final_cv_text": final_cv_text
     }

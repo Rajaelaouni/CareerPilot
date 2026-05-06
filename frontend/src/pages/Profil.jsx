@@ -1,210 +1,543 @@
-/**
- * @file Profil.jsx
- * @description Page Profil Utilisateur — CareerPilot
- * @author Fatima Zahra MARGHICH
- * @version 1.0.0
- */
-
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Sidebar, { C } from "./Sidebar";
+import { useAppSettings } from "../context/AppSettingsContext";
 
-const TOP_SKILLS = ["React","Python","FastAPI","Git"];
-const ACTIVITES  = [
-  { label:"Candidature envoyée — Fullstack Senior", time:"Il y a 2 heures",  color:C.primary   },
-  { label:"Optimisation CV terminée  +15%",         time:"Il y a 30 min",    color:"#22C55E"   },
-  { label:"Nouveau badge — Python Expert",           time:"Il y a 3 jours",  color:C.secondary },
-];
+function getInitials(name) {
+  if (!name) return "U";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase())
+    .join("") || "U";
+}
 
-function Field({ label, value, type="text" }) {
-  const [val, setVal] = useState(value);
-  const [focused, setFocused] = useState(false);
+function Field({ label, value, onChange, readOnly = true, type = "text", theme }) {
   return (
-    <div style={{ marginBottom:16 }}>
-      <label style={{ fontSize:12, fontWeight:600, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em", display:"block", marginBottom:6, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{label}</label>
-      <input type={type} value={val} onChange={e => setVal(e.target.value)}
-        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+    <div style={{ marginBottom: 16 }}>
+      <label style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: theme.muted,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        display: "block",
+        marginBottom: 6,
+      }}>
+        {label}
+      </label>
+
+      <input
+        type={type}
+        value={value}
+        readOnly={readOnly}
+        onChange={onChange}
         style={{
-          width:"100%", padding:"11px 14px", fontSize:14, color:C.text,
-          background: focused ? "#fff" : C.bg,
-          border:`1.5px solid ${focused ? C.primary : C.border}`,
-          borderRadius:10, outline:"none", fontFamily:"'Plus Jakarta Sans',sans-serif",
-          boxShadow: focused ? `0 0 0 3px ${C.primary}15` : "none",
-          transition:"all 0.2s",
+          width: "100%",
+          padding: "12px 14px",
+          fontSize: 14,
+          color: theme.text,
+          background: readOnly ? theme.bg : "#fff",
+          border: `1.5px solid ${readOnly ? theme.border : C.primary}`,
+          borderRadius: 10,
+          outline: "none",
         }}
       />
     </div>
   );
 }
 
-function Toggle({ label, checked, onChange }) {
-  return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-      <span style={{ fontSize:14, color:C.text, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{label}</span>
-      <div onClick={onChange} style={{
-        width:42, height:22, borderRadius:11, cursor:"pointer",
-        background: checked ? C.gradient : C.border,
-        position:"relative", transition:"background 0.3s",
-      }}>
-        <div style={{
-          position:"absolute", top:3, left: checked ? 23 : 3,
-          width:16, height:16, borderRadius:"50%", background:"#fff",
-          transition:"left 0.3s", boxShadow:"0 1px 4px rgba(0,0,0,0.2)",
-        }} />
-      </div>
-    </div>
-  );
-}
-
 export default function Profil() {
-  const [notifEmail, setNotifEmail] = useState(true);
-  const [notifPush,  setNotifPush]  = useState(false);
-  const [editing,    setEditing]    = useState(false);
+  const { theme } = useAppSettings();
+
+  const [profile, setProfile] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    location: "",
+  });
+
+  const [history, setHistory] = useState([]);
+  const [latest, setLatest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setApiError("Utilisateur non connecté.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const headers = { Authorization: `Token ${token}` };
+
+        const profileRes = await fetch("http://localhost:8000/api/dashboard/profile", {
+          method: "GET",
+          headers,
+        });
+
+        const profileData = await profileRes.json();
+
+        if (!profileRes.ok) {
+          throw new Error(profileData.detail || "Impossible de charger le profil.");
+        }
+
+        setProfile({
+          full_name: profileData.full_name || profileData.username || "",
+          email: profileData.email || "",
+          phone: profileData.phone || "",
+          location: profileData.location || "",
+        });
+
+        localStorage.setItem("user", JSON.stringify(profileData));
+
+        const historyRes = await fetch("http://localhost:8000/api/cv/history", { headers });
+        const historyData = await historyRes.json();
+
+        if (Array.isArray(historyData)) {
+          setHistory(historyData);
+        }
+
+        const latestRes = await fetch("http://localhost:8000/api/cv/latest-analysis", { headers });
+
+        if (latestRes.ok) {
+          const latestData = await latestRes.json();
+          setLatest(latestData);
+        }
+      } catch (e) {
+        setApiError(e.message || "Erreur profil.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
+
+  const handleChange = (field) => (e) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+    }));
+    setSuccess("");
+    setApiError("");
+  };
+
+  const handleSave = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setApiError("Utilisateur non connecté.");
+      return;
+    }
+
+    setSaving(true);
+    setApiError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch("http://localhost:8000/api/dashboard/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          full_name: profile.full_name,
+          phone: profile.phone,
+          location: profile.location,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Erreur lors de la sauvegarde.");
+      }
+
+      const updatedUser = data.user || {};
+      setProfile({
+        full_name: updatedUser.full_name || updatedUser.username || profile.full_name,
+        email: updatedUser.email || profile.email,
+        phone: updatedUser.phone || "",
+        location: updatedUser.location || "",
+      });
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      setEditing(false);
+      setSuccess("Profil mis à jour avec succès.");
+    } catch (e) {
+      setApiError(e.message || "Erreur sauvegarde.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const avgScore = useMemo(() => {
+    if (!history.length) return 0;
+    const total = history.reduce((sum, item) => sum + Number(item.atsScore || 0), 0);
+    return Math.round(total / history.length);
+  }, [history]);
+
+  const topSkills = useMemo(() => {
+    const skills = latest?.technicalSkills || [];
+    return skills.slice(0, 6);
+  }, [latest]);
+
+  const recentActivities = useMemo(() => {
+    return history.slice(0, 3).map((item) => ({
+      label: `Analyse CV terminée — ${item.filename}`,
+      time: "Récemment",
+      color: item.atsScore >= 75 ? "#22C55E" : item.atsScore >= 60 ? "#F59E0B" : C.primary,
+    }));
+  }, [history]);
+
+  if (loading) {
+    return <div style={{ padding: 40, background: theme.bg, color: theme.text }}>Chargement du profil...</div>;
+  }
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", background:C.bg, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0}`}</style>
+    <div style={{ display: "flex", minHeight: "100vh", background: theme.bg, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+      `}</style>
+
       <Sidebar activeId="profil" />
 
-      <main style={{ marginLeft:220, flex:1, padding:"32px 40px", overflowY:"auto" }}>
-        {/* Header */}
-        <div style={{ marginBottom:28 }}>
-          <div style={{ fontSize:13, color:C.muted, marginBottom:6 }}>CareerPilot / Profil</div>
-          <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:C.text, margin:0 }}>Mon Profil</h1>
+      <main style={{ marginLeft: 220, flex: 1, padding: "32px 40px", overflowY: "auto" }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 13, color: theme.muted, marginBottom: 6 }}>CareerPilot / Profil</div>
+          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 30, fontWeight: 800, color: theme.text }}>
+            Mon Profil
+          </h1>
         </div>
 
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:24, alignItems:"start" }}>
-          {/* Colonne gauche */}
-          <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+        {apiError && (
+          <div style={{
+            background: "#FEF2F2",
+            border: "1.5px solid #FCA5A5",
+            color: "#DC2626",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 18,
+            fontSize: 13,
+          }}>
+            ❌ {apiError}
+          </div>
+        )}
 
-            {/* Avatar + nom */}
-            <div style={{ background:C.card, borderRadius:20, padding:28, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:24 }}>
+        {success && (
+          <div style={{
+            background: "#DCFCE7",
+            border: "1.5px solid #86EFAC",
+            color: "#16A34A",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 18,
+            fontSize: 13,
+            fontWeight: 700,
+          }}>
+            ✅ {success}
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 24, alignItems: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{
+              background: theme.card,
+              borderRadius: 20,
+              padding: 28,
+              border: `1px solid ${theme.border}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 24,
+            }}>
               <div style={{
-                width:80, height:80, borderRadius:"50%", background:C.gradient,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:28, fontWeight:800, color:"#fff", fontFamily:"'Syne',sans-serif",
-                boxShadow:"0 8px 24px rgba(200,24,122,0.3)", flexShrink:0,
-              }}>F</div>
-              <div style={{ flex:1 }}>
-                <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:C.text, margin:"0 0 4px" }}>
-                  Fatima Zahra Ouali
+                width: 86,
+                height: 86,
+                borderRadius: "50%",
+                background: theme.gradient,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 30,
+                fontWeight: 800,
+                color: "#fff",
+                fontFamily: "'Syne',sans-serif",
+                boxShadow: "0 8px 24px rgba(200,24,122,0.3)",
+              }}>
+                {getInitials(profile.full_name)}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <h2 style={{
+                  fontFamily: "'Syne',sans-serif",
+                  fontSize: 24,
+                  fontWeight: 800,
+                  color: theme.text,
+                  marginBottom: 6,
+                }}>
+                  {profile.full_name || "Utilisateur"}
                 </h2>
-                <div style={{ fontSize:14, color:C.muted, marginBottom:8, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-                  Développeuse Frontend
+
+                <div style={{ fontSize: 14, color: theme.muted, marginBottom: 8 }}>
+                  Profil CareerPilot
                 </div>
-                <div style={{ display:"flex", gap:16 }}>
-                  <span style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", display:"flex", alignItems:"center", gap:4 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    Berkane, Maroc
+
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12, color: theme.muted }}>
+                    📍 {profile.location || "Non renseigné"}
                   </span>
-                  <span style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>🎓 2 ans d'expérience</span>
+                  <span style={{ fontSize: 12, color: theme.muted }}>
+                    📄 {history.length} CV analysé{history.length > 1 ? "s" : ""}
+                  </span>
                 </div>
               </div>
-              <button onClick={() => setEditing(!editing)} style={{
-                background: editing ? C.gradient : "transparent",
-                border:`1.5px solid ${editing ? "transparent" : C.border}`,
-                color: editing ? "#fff" : C.text,
-                fontSize:13, fontWeight:600, padding:"9px 20px", borderRadius:10,
-                cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-              }}>
-                {editing ? "✓ Sauvegarder" : "✏ Modifier le profil"}
+
+              <button
+                onClick={() => editing ? handleSave() : setEditing(true)}
+                disabled={saving}
+                style={{
+                  background: editing ? theme.gradient : "transparent",
+                  border: `1.5px solid ${editing ? "transparent" : theme.border}`,
+                  color: editing ? "#fff" : theme.text,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  padding: "10px 22px",
+                  borderRadius: 10,
+                  cursor: saving ? "not-allowed" : "pointer",
+                }}
+              >
+                {saving ? "Sauvegarde..." : editing ? "✓ Sauvegarder" : "✏ Modifier le profil"}
               </button>
             </div>
 
-            {/* Informations personnelles */}
-            <div style={{ background:C.card, borderRadius:20, padding:28, border:`1px solid ${C.border}` }}>
-              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:C.text, margin:"0 0 20px", display:"flex", alignItems:"center", gap:8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Informations personnelles
+            <div style={{ background: theme.card, borderRadius: 20, padding: 28, border: `1px solid ${theme.border}` }}>
+              <h3 style={{
+                fontFamily: "'Syne',sans-serif",
+                fontSize: 16,
+                fontWeight: 800,
+                color: theme.text,
+                marginBottom: 20,
+              }}>
+                👤 Informations personnelles
               </h3>
-              <Field label="Email"     value="fatima.zahra@careerpilot.io" type="email" />
-              <Field label="Téléphone" value="+212 6 00 00 00 00" />
-              <Field label="Localisation" value="Berkane, Maroc" />
-            </div>
 
-            {/* Sécurité */}
-            <div style={{ background:C.card, borderRadius:20, padding:28, border:`1px solid ${C.border}` }}>
-              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:C.text, margin:"0 0 20px", display:"flex", alignItems:"center", gap:8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Sécurité
-              </h3>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <div style={{ fontSize:13, fontWeight:600, color:C.text, fontFamily:"'Syne',sans-serif" }}>Mot de passe</div>
-                  <div style={{ fontSize:12, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", letterSpacing:"0.15em" }}>••••••••••••</div>
+              <Field label="Nom complet" value={profile.full_name} readOnly={!editing} onChange={handleChange("full_name")} theme={theme} />
+              <Field label="Email" value={profile.email} type="email" readOnly={true} theme={theme} />
+              <Field label="Téléphone" value={profile.phone} readOnly={!editing} onChange={handleChange("phone")} theme={theme} />
+              <Field label="Localisation" value={profile.location} readOnly={!editing} onChange={handleChange("location")} theme={theme} />
+
+              {editing && (
+                <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{
+                      background: theme.gradient,
+                      color: "#fff",
+                      border: "none",
+                      padding: "11px 22px",
+                      borderRadius: 10,
+                      fontWeight: 800,
+                      cursor: saving ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {saving ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+
+                  <button
+                    onClick={() => setEditing(false)}
+                    style={{
+                      background: "transparent",
+                      color: theme.muted,
+                      border: `1px solid ${theme.border}`,
+                      padding: "11px 22px",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Annuler
+                  </button>
                 </div>
-                <button style={{
-                  background:"transparent", border:`1px solid ${C.border}`,
-                  color:C.primary, fontSize:12, fontWeight:600, padding:"7px 16px",
-                  borderRadius:8, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                }}>Changer</button>
-              </div>
+              )}
             </div>
 
-            {/* Notifications */}
-            <div style={{ background:C.card, borderRadius:20, padding:28, border:`1px solid ${C.border}` }}>
-              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:C.text, margin:"0 0 20px", display:"flex", alignItems:"center", gap:8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Notifications
+            <div style={{ background: theme.card, borderRadius: 20, padding: 28, border: `1px solid ${theme.border}` }}>
+              <h3 style={{
+                fontFamily: "'Syne',sans-serif",
+                fontSize: 16,
+                fontWeight: 800,
+                color: theme.text,
+                marginBottom: 20,
+              }}>
+                🔐 Sécurité
               </h3>
-              <Toggle label="Notifications Email" checked={notifEmail} onChange={() => setNotifEmail(v => !v)} />
-              <Toggle label="Notifications Push"  checked={notifPush}  onChange={() => setNotifPush(v => !v)} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Mot de passe</div>
+                  <div style={{ fontSize: 12, color: theme.muted, letterSpacing: "0.15em" }}>••••••••••••</div>
+                </div>
+
+                <button style={{
+                  background: "transparent",
+                  border: `1px solid ${theme.border}`,
+                  color: C.primary,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: "8px 18px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}>
+                  Changer
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Colonne droite — Career Insights */}
-          <div style={{ display:"flex", flexDirection:"column", gap:16, position:"sticky", top:20 }}>
-            <div style={{ background:C.card, borderRadius:20, padding:24, border:`1px solid ${C.border}` }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-                <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:C.text, margin:0 }}>Career Insights</h3>
-                <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:50, background:C.gradientLight, color:C.primary, fontFamily:"'Syne',sans-serif" }}>Rising Prospect 🔥</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 20 }}>
+            <div style={{ background: theme.card, borderRadius: 20, padding: 24, border: `1px solid ${theme.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h3 style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 800, color: theme.text }}>
+                  Career Insights
+                </h3>
+
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: "4px 12px",
+                  borderRadius: 50,
+                  background: theme.gradientLight,
+                  color: C.primary,
+                }}>
+                  Profil actif 🔥
+                </span>
               </div>
 
-              {/* Top compétences */}
-              <div style={{ marginBottom:20 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:C.muted, letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:10, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>TOP COMPÉTENCES</div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                  {TOP_SKILLS.map(s => (
-                    <span key={s} style={{ fontSize:12, fontWeight:600, padding:"5px 12px", borderRadius:50, background:C.gradientLight, color:C.primary, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{s}</span>
-                  ))}
+              <div style={{ marginBottom: 22 }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: theme.muted,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}>
+                  Top compétences
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {topSkills.length === 0 ? (
+                    <span style={{ fontSize: 13, color: theme.muted }}>Aucune compétence détectée</span>
+                  ) : (
+                    topSkills.map((skill) => (
+                      <span key={skill} style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "6px 13px",
+                        borderRadius: 50,
+                        background: theme.gradientLight,
+                        color: C.primary,
+                      }}>
+                        {skill}
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Stats */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20 }}>
-                <div style={{ background:C.bg, borderRadius:12, padding:"14px", textAlign:"center", border:`1px solid ${C.border}` }}>
-                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:C.primary }}>88%</div>
-                  <div style={{ fontSize:11, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginTop:2 }}>Score ATS moyen</div>
+              <div style={{
+                background: theme.bg,
+                borderRadius: 14,
+                padding: 18,
+                textAlign: "center",
+                border: `1px solid ${theme.border}`,
+                marginBottom: 22,
+              }}>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 34, fontWeight: 800, color: C.primary }}>
+                  {avgScore}%
                 </div>
-                <div style={{ background:C.bg, borderRadius:12, padding:"14px", textAlign:"center", border:`1px solid ${C.border}` }}>
-                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:C.secondary }}>12</div>
-                  <div style={{ fontSize:11, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginTop:2 }}>Entretiens passés</div>
-                </div>
+                <div style={{ fontSize: 12, color: theme.muted }}>Score ATS moyen</div>
               </div>
 
-              {/* Activité récente */}
-              <div style={{ marginBottom:20 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:C.muted, letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:12, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>ACTIVITÉ RÉCENTE</div>
-                {ACTIVITES.map((a,i) => (
-                  <div key={i} style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:10 }}>
-                    <div style={{ width:6, height:6, borderRadius:"50%", background:a.color, flexShrink:0, marginTop:5 }} />
-                    <div>
-                      <div style={{ fontSize:12, color:C.text, fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1.4 }}>{a.label}</div>
-                      <div style={{ fontSize:11, color:C.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginTop:2 }}>{a.time}</div>
-                    </div>
+              <div>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: theme.muted,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}>
+                  Activité récente
+                </div>
+
+                {recentActivities.length === 0 ? (
+                  <div style={{ fontSize: 13, color: theme.muted }}>
+                    Aucune activité récente.
                   </div>
-                ))}
+                ) : (
+                  recentActivities.map((activity, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
+                      <div style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: activity.color,
+                        flexShrink: 0,
+                        marginTop: 6,
+                      }} />
+
+                      <div>
+                        <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.4 }}>
+                          {activity.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>
+                          {activity.time}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
-              {/* CTA */}
-              <div style={{ background:C.gradientLight, borderRadius:14, padding:16, textAlign:"center" }}>
-                <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:6, fontFamily:"'Syne',sans-serif" }}>Prête pour le prochain niveau ?</div>
-                <div style={{ fontSize:12, color:C.muted, marginBottom:12, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>L'IA CareerPilot a détecté 4 nouvelles opportunités.</div>
-                <button onClick={() => window.location.href="/matching"} style={{
-                  background:C.gradient, border:"none", color:"#fff",
-                  fontSize:13, fontWeight:700, padding:"9px 20px", borderRadius:10,
-                  cursor:"pointer", fontFamily:"'Syne',sans-serif",
-                  boxShadow:"0 4px 12px rgba(200,24,122,0.3)",
-                }}>Voir les Jobs →</button>
+              <div style={{ background: theme.gradientLight, borderRadius: 14, padding: 18, textAlign: "center", marginTop: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: theme.text, marginBottom: 8, fontFamily: "'Syne',sans-serif" }}>
+                  Prêt pour une nouvelle analyse ?
+                </div>
+
+                <div style={{ fontSize: 12, color: theme.muted, marginBottom: 14 }}>
+                  Analysez un nouveau CV et améliorez votre score ATS.
+                </div>
+
+                <button
+                  onClick={() => (window.location.href = "/upload")}
+                  style={{
+                    background: theme.gradient,
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    padding: "10px 22px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontFamily: "'Syne',sans-serif",
+                    boxShadow: "0 4px 12px rgba(200,24,122,0.3)",
+                  }}
+                >
+                  Nouvelle analyse →
+                </button>
               </div>
             </div>
           </div>
