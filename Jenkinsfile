@@ -48,15 +48,13 @@ pipeline {
             withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                 bat """
                 sonar-scanner ^
-                -Dsonar.projectKey=pfa-ats ^
-                -Dsonar.sources=. ^
-                -Dsonar.host.url=http://localhost:9000 ^
                 -Dsonar.login=%SONAR_TOKEN%
                 """
             }
         }
     }
 }
+
 
         stage('Build Docker Image') {
             steps {
