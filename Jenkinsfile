@@ -6,7 +6,14 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 deleteDir()
-                git branch: 'fati', url: 'https://github.com/Rajaelaouni/CareerPilot.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/fati']],
+                    userRemoteConfigs: [[url: 'https://github.com/Rajaelaouni/CareerPilot.git']],
+                    extensions: [
+                        [$class: 'CloneOption', shallow: true, depth: 1, noTags: true]
+                    ]
+                ])
             }
         }
 
