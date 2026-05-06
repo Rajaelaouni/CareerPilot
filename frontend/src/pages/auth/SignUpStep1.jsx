@@ -286,33 +286,38 @@ export default function SignUpStep1({ onNext }) {
   }, [form]);
 
   /** Passage à l'étape 2 */
-  const handleNext = useCallback(async () => {
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    setLoading(true);
+const handleNext = useCallback(async () => {
+  const newErrors = validate();
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
 
-    try {
-      // TODO: Vérifier si l'email existe déjà
-      // const response = await fetch("/api/auth/check-email", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ email: form.email }),
-      // });
-      // if (!response.ok) throw new Error("Cet email est déjà utilisé");
+  setLoading(true);
 
-      await new Promise(r => setTimeout(r, 800));
-      // Passer les données à l'étape 2
-      if (onNext) onNext(form);
-      else navigate("/signup/step2", { state: form });
-    } catch (err) {
-      setErrors({ email: err.message });
-    } finally {
-      setLoading(false);
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/auth/check-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: form.email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Cet email est déjà utilisé");
     }
-  }, [form, validate, onNext, navigate]);
+
+    if (onNext) onNext(form);
+    else navigate("/signup/step2", { state: form });
+  } catch (err) {
+    setErrors({ email: err.message });
+  } finally {
+    setLoading(false);
+  }
+}, [form, validate, onNext, navigate]);
 
   // ── Render ─────────────────────────────────────────────
   return (

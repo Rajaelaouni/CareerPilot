@@ -13,21 +13,32 @@ import Dashboard   from './pages/Dashboard';
 import UploadCV    from './pages/UploadCV';
 import AnalysesCV  from './pages/AnalysesCV';
 import JobMatching  from './pages/JobMatching';
+import Parametres  from './pages/Parametres';
+import Profil      from './pages/Profil';
+import CVOptimise  from './pages/CVOptimise';
+import Entretien   from './pages/Entretien';
+import { AppSettingsProvider } from "./context/AppSettingsContext";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/"       element={<LandingPage />} />
-        <Route path="/login"  element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="*"       element={<Navigate to="/" replace />} />
-         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/upload"  element={<UploadCV />} />
-        <Route path="/analyses" element={<AnalysesCV />} />
-        <Route path="/matching" element={<JobMatching />} />
-      </Routes>
-    </BrowserRouter>
+    <AppSettingsProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/upload" element={<UploadCV />} />
+          <Route path="/analyses" element={<AnalysesCV />} />
+          <Route path="/parametres" element={<Parametres />} />
+          <Route path="/profil" element={<Profil />} />
+          <Route path="/matching" element={<JobMatching />} />
+          <Route path="/optimise" element={<CVOptimise />} />
+          <Route path="/entretien" element={<Entretien />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AppSettingsProvider>
   );
 }
 

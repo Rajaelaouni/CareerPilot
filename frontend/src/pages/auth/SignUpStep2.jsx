@@ -373,42 +373,46 @@ export default function SignUpStep2({ step1Data, onBack }) {
   }, [form, passwordStrength]);
 
   /** Soumission finale et création du compte */
-  const handleSubmit = useCallback(async () => {
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    setLoading(true);
-    setApiError("");
+const handleSubmit = useCallback(async () => {
+  const newErrors = validate();
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
 
-    try {
-      // TODO: Appel API d'inscription
-      // const response = await fetch("/api/auth/register", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     full_name: userData.fullName,
-      //     email:     userData.email,
-      //     password:  form.password,
-      //   }),
-      // });
-      // if (!response.ok) {
-      //   const err = await response.json();
-      //   throw new Error(err.detail || "Erreur lors de l'inscription");
-      // }
-      // const data = await response.json();
-      // localStorage.setItem("token", data.token);
+  setLoading(true);
+  setApiError("");
 
-      await new Promise(r => setTimeout(r, 1800));
-      setSuccess(true);
-      setTimeout(() => navigate("/dashboard"), 1200);
-    } catch (err) {
-      setApiError(err.message || "Erreur serveur. Réessayez.");
-    } finally {
-      setLoading(false);
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        full_name: userData.fullName,
+        email: userData.email,
+        password: form.password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Erreur lors de l'inscription");
     }
-  }, [form, validate, userData, navigate]);
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    setSuccess(true);
+    setTimeout(() => navigate("/dashboard"), 1200);
+  } catch (err) {
+    setApiError(err.message || "Erreur serveur. Réessayez.");
+  } finally {
+    setLoading(false);
+  }
+}, [form, validate, userData, navigate]);
 
   // ── Render ─────────────────────────────────────────────
   return (

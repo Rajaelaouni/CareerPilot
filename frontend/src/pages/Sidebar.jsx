@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 // ─── Couleurs partagées (export pour toutes les pages) ───
 export const C = {
@@ -42,18 +43,29 @@ const NAV_ITEMS = [
   { id: "upload",     label: "Upload CV",    icon: Icons.upload,    path: "/upload"      },
   { id: "entretien",  label: "Entretien",    icon: Icons.entretien, path: "/entretien"   },
   { id: "matching",   label: "Job Matching", icon: Icons.matching,  path: "/matching"    },
-  { id: "cvoptimise", label: "CV Optimisé",  icon: Icons.cvopt,     path: "/cv-optimise" },
+  { id: "optimise",   label: "CV Optimisé",  icon: Icons.cvopt,     path: "/optimise"    },
   { id: "profil",     label: "Profil",       icon: Icons.profil,    path: "/profil"      },
 ];
 
 export default function Sidebar({ activePage }) {
   const [hovered, setHovered] = useState(null);
-  const go = path => { window.location.href = path; };
+  const { theme } = useAppSettings();
+
+  const go = (path) => {
+    window.location.href = path;
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("latest_analysis_id");
+    window.location.href = "/login";
+  };
 
   return (
     <div style={{
       width: 240, minHeight: "100vh",
-      background: C.card, borderRight: `1px solid ${C.border}`,
+      background: theme.card, borderRight: `1px solid ${theme.border}`,
       display: "flex", flexDirection: "column",
       padding: "24px 0", position: "fixed",
       top: 0, left: 0, zIndex: 50,
@@ -62,19 +74,19 @@ export default function Sidebar({ activePage }) {
       {/* Logo */}
       <div style={{
         display: "flex", alignItems: "center", gap: 10,
-        padding: "0 20px 24px", borderBottom: `1px solid ${C.border}`, marginBottom: 8,
+        padding: "0 20px 24px", borderBottom: `1px solid ${theme.border}`, marginBottom: 8,
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10, background: C.gradient,
+          width: 36, height: 36, borderRadius: 10, background: theme.gradient,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: "'Syne',sans-serif",
           boxShadow: "0 4px 12px rgba(200,24,122,0.3)",
         }}>C</div>
         <div>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, color: C.text }}>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, color: theme.text }}>
             Career<span style={{ color: C.primary }}>Pilot</span>
           </div>
-          <div style={{ fontSize: 10, color: C.muted }}>AI Digital Concierge</div>
+          <div style={{ fontSize: 10, color: theme.muted }}>AI Digital Concierge</div>
         </div>
       </div>
 
@@ -91,13 +103,13 @@ export default function Sidebar({ activePage }) {
                 width: "100%", display: "flex", alignItems: "center", gap: 12,
                 padding: "10px 12px", borderRadius: 10, border: "none",
                 cursor: "pointer", marginBottom: 2, textAlign: "left",
-                background: isActive ? C.gradientLight : isHov ? C.bg : "transparent",
-                color: isActive ? C.primary : isHov ? C.text : C.muted,
+                background: isActive ? theme.gradientLight : isHov ? theme.bg : "transparent",
+                color: isActive ? C.primary : isHov ? theme.text : theme.muted,
                 fontWeight: isActive ? 700 : 500, fontSize: 14,
                 fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
                 borderLeft: isActive ? `3px solid ${C.primary}` : "3px solid transparent",
               }}>
-              <span style={{ color: isActive ? C.primary : isHov ? C.secondary : C.muted, flexShrink: 0 }}>
+              <span style={{ color: isActive ? C.primary : isHov ? C.secondary : theme.muted, flexShrink: 0 }}>
                 {item.icon}
               </span>
               {item.label}
@@ -107,42 +119,30 @@ export default function Sidebar({ activePage }) {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: "12px", borderTop: `1px solid ${C.border}` }}>
-        <button onClick={() => go("/settings")} style={{
+      <div style={{ padding: "12px", borderTop: `1px solid ${theme.border}` }}>
+        <button onClick={() => go("/parametres")} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 12,
           padding: "10px 12px", borderRadius: 10, border: "none",
           cursor: "pointer", marginBottom: 4, background: "transparent",
-          color: C.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
+          color: theme.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = C.bg; e.currentTarget.style.color = C.text; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}>
+        onMouseEnter={e => { e.currentTarget.style.background = theme.bg; e.currentTarget.style.color = theme.text; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.muted; }}>
           {Icons.settings} Paramètres
         </button>
-        <button onClick={() => go("/login")} style={{
+
+        <button onClick={handleLogout} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 12,
           padding: "10px 12px", borderRadius: 10, border: "none",
           cursor: "pointer", marginBottom: 12, background: "transparent",
-          color: C.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
+          color: theme.muted, fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all 0.2s",
         }}
         onMouseEnter={e => { e.currentTarget.style.background = "#FEF2F2"; e.currentTarget.style.color = C.error; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; }}>
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.muted; }}>
           {Icons.logout} Déconnexion
         </button>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 10,
-          padding: "10px 12px", borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`,
-        }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: "50%", background: C.gradient,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 800, color: "#fff", fontFamily: "'Syne',sans-serif", flexShrink: 0,
-          }}>F</div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: "'Syne',sans-serif" }}>Fatima A.</div>
-            <div style={{ fontSize: 11, color: C.muted }}>Compte Gratuit</div>
-          </div>
-        </div>
       </div>
+
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');`}</style>
     </div>
   );
