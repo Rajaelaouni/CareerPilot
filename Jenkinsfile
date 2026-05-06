@@ -70,12 +70,14 @@ pipeline {
         }
 
         stage('Run Docker Container') {
-            steps {
-                bat 'docker stop django-app || exit 0'
-                bat 'docker rm django-app || exit 0'
-                bat 'docker run -d -p 8000:8000 --name django-app django-app'
-            }
-        }
+    steps {
+        bat '''
+        docker rm -f django-app || exit 0
+        docker build -t django-app .
+        docker run -d -p 8000:8000 --name django-app django-app
+        '''
+    }
+}  
     }
 
     post {
