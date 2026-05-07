@@ -6,7 +6,6 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 deleteDir()
-
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/fati']],
@@ -15,16 +14,52 @@ pipeline {
             }
         }
 
+        stage('Clean Docker') {
+            steps {
+                bat '''
+                docker compose down -v || exit 0
+                docker rm -f django-backend react-frontend postgres-db || exit 0
+                docker network prune -f || exit 0
+                '''
+            }
+        }
+
         stage('Docker Compose Build') {
             steps {
-                bat 'docker compose down'
-                bat 'docker compose build'
+                bat '''
+                docker compose down || exit 0
+                docker compose build
+                '''
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        bat '''
+                        sonar-scanner ^
+                        -Dsonar.projectKey=CareerPilot ^
+                        -Dsonar.sources=. ^
+                        -Dsonar.host.url=http://localhost:9000 ^
+                        -Dsonar.login=%SONAR_TOKEN%
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
         stage('Start Containers') {
             steps {
-                bat 'docker compose up -d'
+                bat 'docker compose up -d --build --force-recreate'
             }
         }
 
