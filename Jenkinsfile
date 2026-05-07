@@ -26,10 +26,10 @@ pipeline {
         stage('Clean Environment') {
             steps {
                 bat '''
-                docker compose down -v || exit 0
-                docker rm -f django-backend react-frontend postgres-db sonarqube || exit 0
+                ocker compose down -v || exit 0
+                docker rm -f django-backend react-frontend postgres-db || exit 0
+
                 docker system prune -f
-                docker image prune -a -f
                 docker volume prune -f
                 '''
             }
@@ -44,29 +44,52 @@ pipeline {
 
         /* ========================= */
         stage('Backend Tests') {
-            steps {
-                bat '''
-                if exist backend (
-                    cd backend
-                    pip install -r requirements.txt
-                    python manage.py test
-                ) else (
-                    echo "Backend folder not found - skipping tests"
-                )
-                '''
-            }
-        }
+    steps {
+        bat '''
+        echo ===== BACKEND TESTS =====
+
+        if exist Backend (
+            cd Backend
+
+            echo Installing dependencies...
+            pip install -r requirements.txt
+
+            echo Running Django tests...
+            python manage.py test --verbosity=2
+
+        ) else (
+            echo Backend folder not found - skipping tests
+            exit /b 0
+        )
+        '''
+    }
+}
 
         /* ========================= */
         stage('Frontend Tests') {
-            steps {
-                bat '''
-                cd frontend
-                npm install
-                npm test -- --watchAll=false || exit 0
-                '''
-            }
-        }
+    steps {
+        bat '''
+        echo ===== FRONTEND TESTS =====
+
+        if exist frontend (
+            cd frontend
+
+            echo Installing dependencies...
+            npm install
+
+            echo Running tests...
+            npm test -- --watchAll=false
+
+            echo Building project...
+            npm run build
+
+        ) else (
+            echo Frontend folder not found - skipping tests
+            exit /b 0
+        )
+        '''
+    }
+}
 
         /* ========================= */
         stage('Start SonarQube') {
@@ -79,13 +102,10 @@ pipeline {
 
         /* ========================= */
         stage('Wait for SonarQube') {
-            steps {
-                bat '''
-                echo Waiting for SonarQube startup...
-                timeout /t 60
-                '''
-            }
-        }
+    steps {
+        powershell 'Start-Sleep -Seconds 60'
+    }
+}
 
         /* ========================= */
         stage('SonarQube Analysis') {
