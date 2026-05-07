@@ -50,12 +50,12 @@ pipeline {
         }
 
         stage('Quality Gate') {
-            steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
+    steps {
+        timeout(time: 5, unit: 'MINUTES') {  // ← était 2, mets 5
+            waitForQualityGate abortPipeline: true
         }
+    }
+}
 
         stage('Start Containers') {
             steps {
