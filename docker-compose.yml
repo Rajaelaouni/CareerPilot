@@ -3,7 +3,6 @@ services:
 
   db:
     image: postgres:15
-  #  container_name: postgres-db
     environment:
       POSTGRES_DB: PFAdb
       POSTGRES_USER: postgres
@@ -13,7 +12,6 @@ services:
 
   backend:
     build: .
-   # container_name: django-backend
     ports:
       - "8000:8000"
     volumes:
@@ -22,7 +20,7 @@ services:
       - db
 
   frontend:
-   # container_name: react-frontend
+    build: ./frontend
     ports:
       - "5173:5173"
     volumes:
