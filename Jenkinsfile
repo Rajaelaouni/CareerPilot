@@ -42,56 +42,7 @@ pipeline {
             }
         }
 
-        /* ========================= */
-//         stage('Backend Tests') {
-//     steps {
-//         bat '''
-//         echo ===== BACKEND TESTS =====
-
-//         if exist Backend (
-//             cd Backend
-
-//             echo Installing dependencies...
-//             pip install -r requirements.txt
-
-//             echo Running Django tests...
-//             python manage.py test --verbosity=2
-
-//         ) else (
-//             echo Backend folder not found - skipping tests
-//             exit /b 0
-//         )
-//         '''
-//     }
-// }
-
-//         /* ========================= */
-//         stage('Frontend Tests') {
-//     steps {
-//         bat '''
-//         echo ===== FRONTEND TESTS =====
-
-//         if exist frontend (
-//             cd frontend
-
-//             echo Installing dependencies...
-//             npm install
-
-//             echo Running tests...
-//             npm test -- --watchAll=false
-
-//             echo Building project...
-//             npm run build
-
-//         ) else (
-//             echo Frontend folder not found - skipping tests
-//             exit /b 0
-//         )
-//         '''
-//     }
-// }
-
-        /* ========================= */
+         /* ========================= */
         stage('Start SonarQube') {
             steps {
                 bat '''
@@ -127,7 +78,7 @@ pipeline {
         /* ========================= */
         stage('Quality Gate') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 20, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
