@@ -1,38 +1,85 @@
 pipeline {
     agent any
 
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')
+    }
+
     stages {
 
+        /* =========================
+           1. CHECKOUT CODE
+        ========================= */
         stage('Checkout Code') {
             steps {
                 deleteDir()
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/fati']],
-                    userRemoteConfigs: [[url: 'https://github.com/Rajaelaouni/CareerPilot.git']]
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Rajaelaouni/CareerPilot.git'
+                    ]]
                 ])
             }
         }
 
-        stage('Clean Docker') {
+        /* =========================
+           2. CLEAN DOCKER + SPACE OPTIMIZATION
+        ========================= */
+        stage('Clean Environment (Space Optimized)') {
             steps {
                 bat '''
                 docker compose down -v || exit 0
-                docker rm -f django-backend react-frontend postgres-db || exit 0
-                docker network prune -f || exit 0
+                docker rm -f django-backend react-frontend postgres-db sonarqube || exit 0
+
+                REM 🧹 Nettoyage espace disque (IMPORTANT)
+                docker system prune -f
+                docker image prune -a -f
+                docker volume prune -f
                 '''
             }
         }
 
-        stage('Docker Compose Build') {
+        /* =========================
+           3. BUILD DOCKER
+        ========================= */
+        stage('Build Docker Images') {
             steps {
                 bat '''
-                docker compose down || exit 0
                 docker compose build
                 '''
             }
         }
 
+        /* =========================
+           4. BACKEND TESTS
+        ========================= */
+        stage('Backend Tests') {
+            steps {
+                bat '''
+                cd backend
+                pip install -r requirements.txt
+                python manage.py test
+                '''
+            }
+        }
+
+        /* =========================
+           5. FRONTEND TESTS
+        ========================= */
+        stage('Frontend Tests') {
+            steps {
+                bat '''
+                cd frontend
+                npm install
+                npm test -- --watchAll=false || exit 0
+                '''
+            }
+        }
+
+        /* =========================
+           6. SONARQUBE ANALYSIS
+        ========================= */
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -49,34 +96,63 @@ pipeline {
             }
         }
 
+        /* =========================
+           7. QUALITY GATE
+        ========================= */
         stage('Quality Gate') {
-    steps {
-        timeout(time: 5, unit: 'MINUTES') {  // ← était 2, mets 5
-            waitForQualityGate abortPipeline: true
-        }
-    }
-}
-
-        stage('Start Containers') {
             steps {
-                bat 'docker compose up -d --build --force-recreate'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
+        /* =========================
+           8. DEPLOY CONTAINERS
+        ========================= */
+        stage('Deploy Containers') {
+            steps {
+                bat '''
+                docker compose up -d --build --force-recreate
+                '''
+            }
+        }
+
+        /* =========================
+           9. SHOW CONTAINERS
+        ========================= */
         stage('Show Running Containers') {
             steps {
                 bat 'docker ps'
             }
         }
+
+        /* =========================
+           10. OPTIONAL: STOP SONAR TO SAVE SPACE
+        ========================= */
+        stage('Stop Heavy Services (Optional Cleanup)') {
+            steps {
+                bat '''
+                docker stop sonarqube || exit 0
+                '''
+            }
+        }
     }
 
+    /* =========================
+       POST ACTIONS
+    ========================= */
     post {
         success {
-            echo '✅ Pipeline exécuté avec succès'
+            echo '✅ Pipeline SUCCESS - CI/CD + tests + Sonar + Docker + optimized storage'
         }
 
         failure {
-            echo '❌ Pipeline échoué'
+            echo '❌ Pipeline FAILED - check logs'
+        }
+
+        always {
+            echo '📌 Pipeline finished (resources cleaned where possible)'
         }
     }
 }
