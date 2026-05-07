@@ -6,87 +6,42 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 deleteDir()
+
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: '*/fati']],
-                    userRemoteConfigs: [[url: 'https://github.com/Rajaelaouni/CareerPilot.git']],
-                    extensions: [
-                        [$class: 'CloneOption', shallow: true, depth: 1, noTags: true]
-                    ]
+                    userRemoteConfigs: [[url: 'https://github.com/Rajaelaouni/CareerPilot.git']]
                 ])
             }
         }
 
-        stage('Check Workspace') {
+        stage('Docker Compose Build') {
             steps {
-                bat 'dir'
+                bat 'docker compose down'
+                bat 'docker compose build'
             }
         }
 
-        stage('Check Python & Pip') {
+        stage('Start Containers') {
             steps {
-                bat 'python --version'
-                bat 'pip --version'
+                bat 'docker compose up -d'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Show Running Containers') {
             steps {
-                bat 'python -m pip install --upgrade pip'
-                bat 'pip install -r requirements.txt'
+                bat 'docker ps'
             }
         }
-
-        stage('Run Migrations') {
-            steps {
-                bat 'python manage.py migrate'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                bat 'python manage.py test'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('SonarQube') {
-            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                bat """
-                sonar-scanner ^
-                -Dsonar.login=%SONAR_TOKEN%
-                """
-            }
-        }
-    }
-}
-
-
-        stage('Build Docker Image') {
-            steps {
-                bat 'docker build -t django-app .'
-            }
-        }
-
-        stage('Run Docker Container') {
-    steps {
-        bat '''
-        docker rm -f django-app || exit 0
-        docker build -t django-app .
-        docker run -d -p 8000:8000 --name django-app django-app
-        '''
-    }
-}  
     }
 
     post {
         success {
-            echo '✅ Pipeline exécuté avec succès!'
+            echo '✅ Pipeline exécuté avec succès'
         }
 
         failure {
-            echo '❌ Pipeline échoué - vérifier les logs'
+            echo '❌ Pipeline échoué'
         }
     }
 }
