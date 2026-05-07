@@ -76,6 +76,16 @@ pipeline {
                 '''
             }
         }
+                 /* =========================
+           5.demarer sonar
+        ========================= */
+        stage('Start SonarQube') {
+    steps {
+        bat '''
+        docker start sonarqube || docker run -d --name sonarqube -p 9000:9000 sonarqube:lts
+        '''
+    }
+}
 
         /* =========================
            6. SONARQUBE ANALYSIS
