@@ -95,7 +95,7 @@ DATABASES = {
         'NAME': 'PFAdb',
         'USER': 'postgres',
         'PASSWORD': 'cesar',
-        'HOST': 'localhost',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
