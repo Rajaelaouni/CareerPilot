@@ -4,12 +4,29 @@ import json
 import unicodedata
 import io
 import zipfile
-import fitz
-from PIL import Image
+from dotenv import load_dotenv # Ajoutez ceci
+load_dotenv() # Et ceci avant de lire HF_TOKEN
+
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 from pypdf import PdfReader
 from docx import Document
-from huggingface_hub import InferenceClient
+
+# Optional deps (avoid crashing Django if missing)
+try:
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
+
+try:
+    from PIL import Image
+except Exception:
+    Image = None
+
+try:
+    from huggingface_hub import InferenceClient
+except Exception:
+    InferenceClient = None
 
 
 # =========================
@@ -21,7 +38,7 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 hf_client = InferenceClient(
     provider="novita",
     api_key=HF_TOKEN
-) if HF_TOKEN else None
+) if (HF_TOKEN and InferenceClient) else None
 
 
 HF_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
@@ -58,8 +75,26 @@ def extract_text_from_file(file_path):
         return extract_text_from_docx(file_path)
 
     return ""
+def call_huggingface_interview(prompt, max_tokens=500, temperature=0.7):
+    if hf_client is None:
+        raise Exception("HF_TOKEN absent.")
+    
+    # On n'utilise pas le format JSON strict ici pour permettre une discussion naturelle
+    response = hf_client.chat.completions.create(
+        model=HF_MODEL,
+        messages=[
+            {"role": "system", "content": "Tu es un recruteur. Analyse le CV fourni dans le prompt et pose des questions précises au candidat."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return response.choices[0].message.content
 
 def save_best_image_from_bytes(images_bytes, output_path):
+    if Image is None:
+        return None
+
     best_image = None
     best_area = 0
 
@@ -88,6 +123,9 @@ def save_best_image_from_bytes(images_bytes, output_path):
 
 
 def extract_photo_from_pdf(file_path, output_path):
+    if fitz is None:
+        return None
+
     images_bytes = []
 
     try:
@@ -168,6 +206,7 @@ def normalize_lines(text):
             clean_lines.append(line)
 
     return clean_lines
+
 
 
 # =========================

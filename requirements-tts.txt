@@ -1,0 +1,3 @@
+# Optional TTS dependencies (backend-generated audio).
+pyttsx3==2.98
+

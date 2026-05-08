@@ -14,7 +14,6 @@ class CV(models.Model):
     def __str__(self):
         return f"{self.file_name} - {self.user.username}"
 
-
 class OptimizedCV(models.Model):
     cv = models.ForeignKey(CV, on_delete=models.CASCADE, related_name="optimized_versions")
     generated_content = models.TextField(blank=True, null=True)
