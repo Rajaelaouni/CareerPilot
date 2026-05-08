@@ -2,41 +2,33 @@ pipeline {
     agent any
 
     stages {
-
-        stage('1 - Clone GitHub') {
+        stage('1 - Checkout GitHub') {
             steps {
-                git branch: 'cesar',
-                url: 'https://github.com/Rajaelaouni/CareerPilot.git'
+                checkout scm
             }
         }
 
-        stage('2 - Check Python') {
-            steps {
-                sh 'python3 --version'
-            }
-        }
-
-        stage('3 - Install Requirements') {
-            steps {
-                sh 'pip3 install -r requirements.txt'
-            }
-        }
-
-        stage('4 - Django Tests') {
-            steps {
-                sh 'python3 manage.py test'
-            }
-        }
-
-        stage('5 - Docker Build') {
+        stage('2 - Docker Build') {
             steps {
                 sh 'docker compose build'
             }
         }
 
-        stage('6 - Docker Compose Up') {
+        stage('3 - Start Containers') {
             steps {
                 sh 'docker compose up -d'
+            }
+        }
+
+        stage('4 - Django Migrations') {
+            steps {
+                sh 'docker compose exec -T backend python manage.py migrate'
+            }
+        }
+
+        stage('5 - Django Tests') {
+            steps {
+                sh 'docker compose exec -T backend python manage.py test'
             }
         }
     }
