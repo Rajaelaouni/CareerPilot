@@ -12,11 +12,20 @@ sqlparse==0.5.5
 typing_extensions==4.15.0
 tzdata==2025.3
 
-# WebSocket (Django Channels)
+# --- WebSocket & Serveur Temps Réel ---
 channels==4.3.1
+daphne==4.1.2
 
-# IA (Groq OpenAI-compatible client)
+# --- IA & Client API ---
+groq==0.18.0
 openai==1.97.0
 
-# Optional audio (TTS) is in requirements-tts.txt
+# --- Audio & Synthèse Vocale (TTS) ---
+edge-tts==6.1.15
 
+# --- Utilitaires ---
+python-dotenv==1.0.1
+
+faster-whisper==1.1.1
+
+numpy==2.2.6

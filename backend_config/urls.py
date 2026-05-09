@@ -6,8 +6,9 @@ urlpatterns = [
     path('api/auth/', include('users.urls')),
     path('api/cv/', include('cv_analysis.urls')),
     path("api/dashboard/", include("dashboard.urls")),
-    path("api/", include("interview_service.urls")),
     
-    # AJOUTE CETTE LIGNE :
+    # CORRECTION : On utilise le nom exact du dossier "Interview"
+    
+    # Ta ligne pour le matching
     path("api/matching/", include("matching.urls")),
 ]
