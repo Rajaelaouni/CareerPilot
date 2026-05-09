@@ -60,12 +60,39 @@ pipeline {
             }
         }
 
-        stage('Wait for SonarQube') {
-            steps {
-                powershell 'Start-Sleep -Seconds 120'
-            }
-        }
+       stage('Wait for SonarQube') {
+    steps {
+        powershell '''
+            $maxAttempts = 30
+            $attempt = 0
+            $ready = $false
 
+            Write-Host "Waiting for SonarQube to be ready..."
+
+            while ($attempt -lt $maxAttempts -and -not $ready) {
+                try {
+                    $response = Invoke-WebRequest -Uri "http://localhost:9000/api/server/version" `
+                                                  -UseBasicParsing `
+                                                  -TimeoutSec 5 `
+                                                  -ErrorAction Stop
+                    if ($response.StatusCode -eq 200) {
+                        Write-Host "✅ SonarQube is ready! (attempt $attempt)"
+                        $ready = $true
+                    }
+                } catch {
+                    $attempt++
+                    Write-Host "⏳ Attempt $attempt/$maxAttempts - Not ready yet, waiting 10s..."
+                    Start-Sleep -Seconds 10
+                }
+            }
+
+            if (-not $ready) {
+                Write-Host "❌ SonarQube did not start in time"
+                exit 1
+            }
+        '''
+    }
+}
         // ✅ FIX 2 : nom du tool corrigé + sonar.token au lieu de sonar.login
         stage('SonarQube Analysis') {
             environment {
