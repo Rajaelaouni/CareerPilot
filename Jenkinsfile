@@ -33,7 +33,10 @@ pipeline {
             steps {
                 bat '''
                 docker compose down -v || exit 0
-                docker rm -f django-backend react-frontend postgres-db || exit 0
+                docker rm -f django-backend react-frontend postgres-db ^
+                     careerpilot-ci-backend-1 ^
+                     careerpilot-ci-frontend-1 ^
+                     careerpilot-ci-db-1 || exit 0
                 docker volume prune -f
                 '''
             }
