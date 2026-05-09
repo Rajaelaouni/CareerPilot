@@ -29,18 +29,22 @@ pipeline {
             }
         }
 
-        stage('Clean Environment') {
-            steps {
-                bat '''
-                docker compose down -v || exit 0
-                docker rm -f django-backend react-frontend postgres-db ^
+stage('Clean Environment') {
+    steps {
+        bat '''
+        docker compose down -v || exit 0
+        docker rm -f django-backend react-frontend postgres-db ^
                      careerpilot-ci-backend-1 ^
                      careerpilot-ci-frontend-1 ^
-                     careerpilot-ci-db-1 || exit 0
-                docker volume prune -f
-                '''
-            }
-        }
+                     careerpilot-ci-db-1 ^
+                     backend-backend-1 || exit 0
+        docker ps -q --filter "publish=8000" > tmp.txt 2>nul
+        for /f "tokens=*" %%i in (tmp.txt) do docker stop %%i && docker rm %%i
+        del tmp.txt 2>nul
+        docker volume prune -f
+        '''
+    }
+}
 
         stage('Build Docker Images') {
             steps {
