@@ -134,12 +134,7 @@ stage('Clean Environment') {
                 }
             }
         }
-        stage('Stop SonarQube') {
-            steps {
-                bat 'docker stop sonarqube || exit 0'
-                bat 'docker rm sonarqube || exit 0'
-            }
-        }
+
         stage('Deploy Containers') {
             steps {
                 bat 'docker compose up -d --build --force-recreate'
