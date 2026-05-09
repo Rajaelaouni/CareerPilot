@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm install          # ← cette ligne est obligatoire
+RUN npm install --prefer-offline || npm install --prefer-offline || npm install
 
 COPY . .
 

@@ -34,7 +34,6 @@ pipeline {
                 bat '''
                 docker compose down -v || exit 0
                 docker rm -f django-backend react-frontend postgres-db || exit 0
-                docker system prune -f
                 docker volume prune -f
                 '''
             }
@@ -128,7 +127,12 @@ pipeline {
                 }
             }
         }
-
+        stage('Stop SonarQube') {
+            steps {
+                bat 'docker stop sonarqube || exit 0'
+                bat 'docker rm sonarqube || exit 0'
+            }
+        }
         stage('Deploy Containers') {
             steps {
                 bat 'docker compose up -d --build --force-recreate'
@@ -141,11 +145,7 @@ pipeline {
             }
         }
 
-        stage('Stop SonarQube') {
-            steps {
-                bat 'docker stop sonarqube || exit 0'
-            }
-        }
+        
     }
 
     post {
