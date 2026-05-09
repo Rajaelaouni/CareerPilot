@@ -43,37 +43,37 @@ pipeline {
         }
 
          /* ========================= */
-        stage('Start SonarQube') {
-            steps {
-                bat '''
-                docker start sonarqube || docker run -d --name sonarqube -p 9000:9000 sonarqube:lts
-                '''
-            }
-        }
-
-        /* ========================= */
-        stage('Wait for SonarQube') {
+       stage('Start SonarQube') {
     steps {
-        powershell 'Start-Sleep -Seconds 60'
+        bat '''
+        docker rm -f sonarqube || exit 0
+        docker run -d --name sonarqube -p 9000:9000 sonarqube:lts
+        '''
     }
 }
 
         /* ========================= */
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        bat '''
-                        sonar-scanner ^
-                        -Dsonar.projectKey=CareerPilot ^
-                        -Dsonar.sources=. ^
-                        -Dsonar.host.url=%SONAR_HOST% ^
-                        -Dsonar.login=%SONAR_TOKEN%
-                        '''
-                    }
-                }
-            }
-        }
+        stage('Wait for SonarQube') {
+    steps {
+        powershell 'Start-Sleep -Seconds 120'
+    }
+}
+
+        /* ========================= */
+stage('SonarQube Analysis') {
+    environment {
+        scannerHome = tool 'SonarQubeScanner'
+    }
+    steps {
+        bat """
+        sonar-scanner ^
+        -Dsonar.projectKey=careerpilot ^
+        -Dsonar.sources=. ^
+        -Dsonar.host.url=http://host.docker.internal:9000 ^
+        -Dsonar.login=%SONAR_TOKEN%
+        """
+    }
+}
 
         /* ========================= */
         stage('Quality Gate') {

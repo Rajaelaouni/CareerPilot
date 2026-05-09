@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'corsheaders',
 
     'rest_framework',
+    'rest_framework.authtoken',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -133,23 +134,19 @@ CORS_ALLOW_CREDENTIALS = True
 
 
 # =========================
-# SESSION AUTH (IMPORTANT)
+# token AUTH (IMPORTANT)
 # =========================
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
 }
 
 
 # =========================
 # CSRF (IMPORTANT POUR REACT)
 # =========================
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+CORS_ALLOW_ALL_ORIGINS = True
 
 # =========================
 # DEFAULT PK
