@@ -9,18 +9,26 @@ pipeline {
     stages {
 
         /* ========================= */
-        stage('Checkout Code') {
-            steps {
-                deleteDir()
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/fati']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Rajaelaouni/CareerPilot.git'
-                    ]]
-                ])
-            }
-        }
+stage('Checkout Code') {
+    steps {
+        deleteDir()
+        checkout([
+            $class: 'GitSCM',
+            branches: [[name: '*/fati']],
+            userRemoteConfigs: [[
+                url: 'https://github.com/Rajaelaouni/CareerPilot.git'
+            ]],
+            extensions: [
+                [$class: 'CloneOption',
+                 shallow: true,
+                 depth: 1,
+                 noTags: true,
+                 timeout: 30
+                ]
+            ]
+        ])
+    }
+}
 
         /* ========================= */
         stage('Clean Environment') {
@@ -69,7 +77,7 @@ stage('SonarQube Analysis') {
         sonar-scanner ^
         -Dsonar.projectKey=careerpilot ^
         -Dsonar.sources=. ^
-        -Dsonar.host.url=http://sonarqube:9000 ^
+        -Dsonar.host.url=http://localhost:9000 ^
         -Dsonar.login=%SONAR_TOKEN%
         """
     }
