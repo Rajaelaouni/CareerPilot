@@ -86,6 +86,7 @@ stage('Clean Environment') {
                         $ready = $true
                     }
                 } catch {
+                
                     $attempt++
                     Write-Host "⏳ Attempt $attempt/$maxAttempts - Not ready yet, waiting 10s..."
                     Start-Sleep -Seconds 10
