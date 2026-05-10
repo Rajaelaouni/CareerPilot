@@ -29,33 +29,34 @@ pipeline {
             }
         }
 
-stage('Clean Environment') {
-    steps {
-        bat '''
-        docker compose down -v || exit 0
-        docker rm -f django-backend react-frontend postgres-db ^
-                     careerpilot-ci-backend-1 ^
-                     careerpilot-ci-frontend-1 ^
-                     careerpilot-ci-db-1 ^
-                     backend-backend-1 || exit 0
-        docker ps -q --filter "publish=8000" > tmp.txt 2>nul
-        for /f "tokens=*" %%i in (tmp.txt) do docker stop %%i && docker rm %%i
-        del tmp.txt 2>nul
-        docker volume prune -f
-        '''
-    }
-}
+        stage('Clean Environment') {
+            steps {
+                bat '''
+                docker compose down -v || exit 0
+                docker rm -f django-backend react-frontend postgres-db ^
+                             careerpilot-ci-backend-1 ^
+                             careerpilot-ci-frontend-1 ^
+                             careerpilot-ci-db-1 ^
+                             backend-backend-1 || exit 0
+                docker ps -q --filter "publish=8000" > tmp.txt 2>nul
+                for /f "tokens=*" %%i in (tmp.txt) do docker stop %%i && docker rm %%i
+                del tmp.txt 2>nul
+                docker volume prune -f
+                '''
+            }
+        }
 
         stage('Build Docker Images') {
             steps {
                 bat 'docker compose build'
             }
         }
-        stage('Django Tests') {
-          steps {
-        bat 'docker compose run --rm backend python manage.py test'
-           }
 
+        stage('Django Tests') {
+            steps {
+                bat 'docker compose run --rm backend python manage.py test'
+            }
+        }
 
         // ✅ FIX 1 : volumes persistants → token survit entre les builds
         stage('Start SonarQube') {
@@ -71,44 +72,43 @@ stage('Clean Environment') {
             }
         }
 
-       stage('Wait for SonarQube') {
-    steps {
-        powershell '''
-            $maxAttempts = 30
-            $attempt = 0
-            $ready = $false
+        stage('Wait for SonarQube') {
+            steps {
+                powershell '''
+                    $maxAttempts = 30
+                    $attempt = 0
+                    $ready = $false
 
-            Write-Host "Waiting for SonarQube to be ready..."
+                    Write-Host "Waiting for SonarQube to be ready..."
 
-            while ($attempt -lt $maxAttempts -and -not $ready) {
-                try {
-                    $response = Invoke-WebRequest -Uri "http://localhost:9000/api/server/version" `
-                                                  -UseBasicParsing `
-                                                  -TimeoutSec 5 `
-                                                  -ErrorAction Stop
-                    if ($response.StatusCode -eq 200) {
-                        Write-Host "✅ SonarQube is ready! (attempt $attempt)"
-                        $ready = $true
+                    while ($attempt -lt $maxAttempts -and -not $ready) {
+                        try {
+                            $response = Invoke-WebRequest -Uri "http://localhost:9000/api/server/version" `
+                                                          -UseBasicParsing `
+                                                          -TimeoutSec 5 `
+                                                          -ErrorAction Stop
+                            if ($response.StatusCode -eq 200) {
+                                Write-Host "✅ SonarQube is ready! (attempt $attempt)"
+                                $ready = $true
+                            }
+                        } catch {
+                            $attempt++
+                            Write-Host "⏳ Attempt $attempt/$maxAttempts - Not ready yet, waiting 10s..."
+                            Start-Sleep -Seconds 10
+                        }
                     }
-                } catch {
 
-                    $attempt++
-                    Write-Host "⏳ Attempt $attempt/$maxAttempts - Not ready yet, waiting 10s..."
-                    Start-Sleep -Seconds 10
-                }
+                    if (-not $ready) {
+                        Write-Host "❌ SonarQube did not start in time"
+                        exit 1
+                    }
+                '''
             }
+        }
 
-            if (-not $ready) {
-                Write-Host "❌ SonarQube did not start in time"
-                exit 1
-            }
-        '''
-    }
-}
-        // ✅ FIX 2 : nom du tool corrigé + sonar.token au lieu de sonar.login
         stage('SonarQube Analysis') {
             environment {
-                scannerHome = tool 'SonarQube Scanner'  // ← nom exact de Jenkins Tools
+                scannerHome = tool 'SonarQube Scanner'
             }
             steps {
                 bat """
@@ -121,7 +121,6 @@ stage('Clean Environment') {
             }
         }
 
-        // ✅ FIX 3 : Quality Gate simplifié (sans webhook)
         stage('Quality Gate') {
             steps {
                 script {
@@ -133,7 +132,9 @@ stage('Clean Environment') {
                         ''',
                         returnStdout: true
                     ).trim()
+
                     echo "Quality Gate result: ${qgStatus}"
+
                     if (qgStatus.contains('"status":"ERROR"')) {
                         error("❌ Quality Gate FAILED")
                     }
@@ -146,22 +147,21 @@ stage('Clean Environment') {
                 bat 'docker compose up -d --build --force-recreate'
             }
         }
+
         stage('Run Migrations') {
-    steps {
-        bat '''
-        timeout /t 15
-        docker compose exec -T backend python manage.py migrate
-        '''
-    }
-}
+            steps {
+                bat '''
+                timeout /t 15
+                docker compose exec -T backend python manage.py migrate
+                '''
+            }
+        }
 
         stage('Show Running Containers') {
             steps {
                 bat 'docker ps'
             }
         }
-
-        
     }
 
     post {
