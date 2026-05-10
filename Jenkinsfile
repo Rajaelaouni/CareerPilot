@@ -151,7 +151,7 @@ pipeline {
         stage('Run Migrations') {
             steps {
                 bat '''
-                timeout /t 15
+                ping 127.0.0.1 -n 15 > nul
                 docker compose exec -T backend python manage.py migrate
                 '''
             }
