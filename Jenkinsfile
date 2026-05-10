@@ -51,6 +51,11 @@ stage('Clean Environment') {
                 bat 'docker compose build'
             }
         }
+        stage('Django Tests') {
+          steps {
+        bat 'docker compose run --rm backend python manage.py test'
+           }
+
 
         // ✅ FIX 1 : volumes persistants → token survit entre les builds
         stage('Start SonarQube') {
@@ -86,7 +91,7 @@ stage('Clean Environment') {
                         $ready = $true
                     }
                 } catch {
-                
+
                     $attempt++
                     Write-Host "⏳ Attempt $attempt/$maxAttempts - Not ready yet, waiting 10s..."
                     Start-Sleep -Seconds 10
@@ -141,6 +146,14 @@ stage('Clean Environment') {
                 bat 'docker compose up -d --build --force-recreate'
             }
         }
+        stage('Run Migrations') {
+    steps {
+        bat '''
+        timeout /t 15
+        docker compose exec -T backend python manage.py migrate
+        '''
+    }
+}
 
         stage('Show Running Containers') {
             steps {
