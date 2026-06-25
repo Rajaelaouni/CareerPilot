@@ -1,286 +1,215 @@
-/**
- * @file Entretien.jsx
- * @description Page Simulation Entretien Vocal — CareerPilot
- * @author Fatima Zahra MARGHICH
- * @version 1.0.0
- */
-
-import { useState, useEffect, useRef } from "react";
-import Sidebar, { C } from "./Sidebar";
+import React, { useState, useEffect, useRef } from "react";
+import Sidebar, { C, Icons } from "./Sidebar";
 import { useAppSettings } from "../context/AppSettingsContext";
-
-const QUESTIONS = [
-  "Décrivez votre expérience avec React et les architectures microservices.",
-  "Comment gérez-vous les conflits dans une équipe Agile ?",
-  "Expliquez votre projet principal le plus complexe.",
-  "Quelles sont vos forces et vos axes d'amélioration ?",
-  "Où vous voyez-vous dans 3 ans ?",
-];
-
-const MOTS_CLES = ["React","API REST","Docker","Microservices","TypeScript"];
-
-function WaveAnimation({ active }) {
-  return (
-    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4, height:48 }}>
-      {[...Array(12)].map((_,i) => (
-        <div key={i} style={{
-          width:4, borderRadius:2,
-          background: active
-            ? `linear-gradient(180deg, ${C.primary}, ${C.secondary})`
-            : "rgba(255,255,255,0.2)",
-          height: active ? `${12 + Math.sin(i * 0.8) * 18 + Math.random() * 10}px` : "8px",
-          animation: active ? `wave${i%4} ${0.6 + i*0.1}s ease-in-out infinite alternate` : "none",
-          transition:"height 0.3s",
-        }} />
-      ))}
-      <style>{`
-        @keyframes wave0{from{height:12px}to{height:36px}}
-        @keyframes wave1{from{height:20px}to{height:44px}}
-        @keyframes wave2{from{height:14px}to{height:30px}}
-        @keyframes wave3{from{height:18px}to{height:40px}}
-      `}</style>
-    </div>
-  );
-}
 
 export default function Entretien() {
   const { theme } = useAppSettings();
-
-  const [status,    setStatus]    = useState("idle");
-  const [qIndex,    setQIndex]    = useState(0);
-  const [timer,     setTimer]     = useState(0);
-  const [progress,  setProgress]  = useState([1]);
-  const [transcript,setTranscript]= useState("");
-  const [rythme,    setRythme]    = useState(85);
-  const [assurance, setAssurance] = useState(92);
-  const [clarte,    setClarte]    = useState(78);
-  const timerRef = useRef(null);
+  const [messages, setMessages] = useState([]);
+  const [isListening, setIsListening] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [interim, setInterim] = useState("");
+  
+  const socket = useRef(null);
+  const recognition = useRef(null);
+  const chatEndRef = useRef(null);
+  const isSpeaking = useRef(false);
 
   useEffect(() => {
-    if (status === "active" || status === "listening") {
-      timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
-    } else {
-      clearInterval(timerRef.current);
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, interim]);
+
+  useEffect(() => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) return;
+
+    recognition.current = new Speech();
+    recognition.current.lang = "fr-FR";
+    recognition.current.continuous = true; 
+    recognition.current.interimResults = true;
+
+    recognition.current.onstart = () => setIsListening(true);
+    recognition.current.onend = () => {
+      setIsListening(false);
+      if (started && !isSpeaking.current) {
+        try { recognition.current.start(); } catch(e) {}
+      }
+    };
+
+    recognition.current.onresult = (e) => {
+      if (isSpeaking.current) return;
+      let interimText = "";
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) {
+          const final = e.results[i][0].transcript;
+          if (final.trim()) {
+            sendToAlex(final);
+            setInterim("");
+          }
+        } else {
+          interimText += e.results[i][0].transcript;
+        }
+      }
+      setInterim(interimText);
+    };
+  }, [started]);
+
+  const startInterview = () => {
+    setStarted(true);
+    socket.current = new WebSocket(`ws://localhost:8000/ws/interview/${localStorage.getItem("cv_id") || "18"}/`);
+    socket.current.onopen = () => {
+      try { recognition.current.start(); } catch(e) {}
+    };
+    socket.current.onmessage = async (e) => {
+      const data = JSON.parse(e.data);
+      setMessages(prev => [...prev, { role: "ai", text: data.text }]);
+      if (data.audio) {
+        isSpeaking.current = true;
+        try { recognition.current.stop(); } catch(e) {}
+        const audio = new Audio(`data:audio/mp3;base64,${data.audio}`);
+        await audio.play();
+        audio.onended = () => {
+          isSpeaking.current = false;
+          try { recognition.current.start(); } catch(e) {}
+        };
+      }
+    };
+  };
+
+  const sendToAlex = (text) => {
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      socket.current.send(JSON.stringify({ text }));
+      setMessages(prev => [...prev, { role: "user", text }]);
     }
-    return () => clearInterval(timerRef.current);
-  }, [status]);
-
-  const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-
-  const handleStart = () => setStatus("active");
-  const handleAnswer = () => {
-    setStatus("listening");
-    setTranscript("Pendant mon dernier projet chez TechCorp, j'ai implémenté une architecture...");
-    setTimeout(() => {
-      const next = qIndex + 1;
-      if (next >= QUESTIONS.length) { setStatus("done"); window.location.href="/entretien/rapport"; }
-      else { setQIndex(next); setProgress(p => [...p, next+1]); setStatus("active"); setTranscript(""); }
-    }, 3000);
   };
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", background:theme.bg, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0}`}</style>
-      <Sidebar activeId="entretien" />
-
-      <main style={{ marginLeft:220, flex:1, padding:"32px 40px", overflowY:"auto" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: theme.bg, color: theme.text, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <Sidebar activePage="entretien" />
+      
+      <main style={{ marginLeft: 240, flex: 1, padding: "32px", display: "flex", flexDirection: "column", height: "100vh", boxSizing: "border-box" }}>
+        
+        {/* Header Section */}
+        <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize:13, color:theme.muted, marginBottom:6 }}>CareerPilot / Entretien</div>
-            <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:theme.text, margin:0 }}>
-              Simulation d'Entretien Vocal
+            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, margin: 0 }}>
+              Entretien <span style={{ color: C.primary }}>IA Temps Réel</span>
             </h1>
+            <p style={{ fontSize: 13, color: theme.muted, margin: "4px 0 0" }}>Discutez oralement avec Alex pour préparer votre poste.</p>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            {status !== "idle" && (
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:13, color:theme.muted }}>Développeur Full Stack</span>
-                <span style={{ fontSize:13, color:theme.muted }}>⏱ {fmt(timer)}</span>
-              </div>
-            )}
-            {(status==="active"||status==="listening") && (
-              <span style={{ fontSize:12, fontWeight:700, padding:"5px 12px", borderRadius:50, background:"#DCFCE7", color:"#16A34A", fontFamily:"'Syne',sans-serif", display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:"#22C55E", display:"inline-block", animation:"blink 1s infinite" }} />
-                SESSION ACTIVE
+          {started && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, background: theme.card, padding: "8px 16px", borderRadius: 12, border: `1px solid ${theme.border}` }}>
+              <div className={isListening ? "pulse-green" : "pulse-red"} />
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5 }}>
+                {isListening ? "ALEX ÉCOUTE..." : "ALEX RÉPOND..."}
               </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:24 }}>
-          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            {status === "idle" ? (
-              <div style={{ background:C.sidebarBg||"#0F0A1E", borderRadius:24, padding:48, textAlign:"center" }}>
-                <div style={{
-                  width:80, height:80, borderRadius:"50%",
-                  background:theme.gradient, margin:"0 auto 24px",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  boxShadow:"0 0 40px rgba(200,24,122,0.4)",
-                }}>
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-                </div>
-                <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:"#fff", margin:"0 0 12px" }}>
-                  Prêt pour votre entretien ?
-                </h2>
-                <p style={{ fontSize:14, color:"rgba(255,255,255,0.6)", lineHeight:1.7, marginBottom:32, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-                  L'IA vous posera 5 questions personnalisées.<br/>
-                  Répondez à voix haute pour une expérience réaliste.
-                </p>
-                <div style={{ display:"flex", gap:16, justifyContent:"center", flexWrap:"wrap", marginBottom:32 }}>
-                  {["5 Questions","~15 min","Analyse vocale"].map(f => (
-                    <div key={f} style={{ background:"rgba(255,255,255,0.08)", borderRadius:10, padding:"8px 16px", fontSize:12, color:"rgba(255,255,255,0.7)", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{f}</div>
-                  ))}
-                </div>
-                <button onClick={handleStart} style={{
-                  background:theme.gradient, border:"none", color:"#fff",
-                  fontSize:15, fontWeight:700, padding:"14px 36px", borderRadius:14,
-                  cursor:"pointer", fontFamily:"'Syne',sans-serif",
-                  boxShadow:"0 8px 24px rgba(200,24,122,0.4)",
-                }}>
-                  🎤 Démarrer l'entretien
-                </button>
-              </div>
-            ) : (
-              <div style={{ background:"#0F0A1E", borderRadius:24, padding:32, minHeight:380 }}>
-                <div style={{ textAlign:"center", marginBottom:24 }}>
-                  <div style={{
-                    width:64, height:64, borderRadius:"50%",
-                    background: status==="listening" ? "rgba(200,24,122,0.3)" : "rgba(123,47,247,0.3)",
-                    margin:"0 auto 16px",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    boxShadow: status==="active" ? "0 0 30px rgba(200,24,122,0.4)" : "0 0 30px rgba(123,47,247,0.3)",
-                  }}>
-                    <WaveAnimation active={status==="active"||status==="listening"} />
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:700, color: status==="listening" ? C.primary : C.secondary, fontFamily:"'Syne',sans-serif", letterSpacing:"0.1em" }}>
-                    {status==="active" ? "IA ACTIVE" : "EN ÉCOUTE..."}
-                  </span>
-                </div>
-
-                <div style={{ textAlign:"center", marginBottom:24 }}>
-                  <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:12, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-                    Question {qIndex+1} sur {QUESTIONS.length}
-                  </div>
-                  <div style={{
-                    background:"rgba(255,255,255,0.06)", borderRadius:16, padding:"20px 24px",
-                    fontSize:16, fontWeight:600, color:"#fff", lineHeight:1.6,
-                    fontFamily:"'Plus Jakarta Sans',sans-serif",
-                    border:"1px solid rgba(255,255,255,0.08)",
-                  }}>
-                    "{QUESTIONS[qIndex]}"
-                  </div>
-                </div>
-
-                {transcript && (
-                  <div style={{ background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"12px 16px", marginBottom:16, border:"1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ fontSize:11, color:C.primary, fontFamily:"'Syne',sans-serif", marginBottom:6 }}>TRANSCRIPTION LIVE</div>
-                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.7)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1.6 }}>
-                      Vous: {transcript}
-                    </div>
-                  </div>
-                )}
-
-                {status === "active" && (
-                  <div style={{ display:"flex", gap:10, background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"10px 14px", border:"1px solid rgba(255,255,255,0.06)" }}>
-                    <span style={{ fontSize:16 }}>💡</span>
-                    <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", fontFamily:"'Plus Jakarta Sans',sans-serif", lineHeight:1.5 }}>
-                      <strong style={{ color:"rgba(255,255,255,0.8)" }}>Conseil de l'IA :</strong> Pensez à mentionner l'orchestration avec Docker ou Kubernetes si vous l'avez utilisé.
-                    </div>
-                  </div>
-                )}
-
-                {status === "active" && (
-                  <div style={{ textAlign:"center", marginTop:24 }}>
-                    <button onClick={handleAnswer} style={{
-                      background:theme.gradient, border:"none", color:"#fff",
-                      fontSize:14, fontWeight:700, padding:"12px 28px", borderRadius:12,
-                      cursor:"pointer", fontFamily:"'Syne',sans-serif",
-                      display:"inline-flex", alignItems:"center", gap:10,
-                      boxShadow:"0 4px 20px rgba(200,24,122,0.4)",
-                    }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
-                      Répondre
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {status !== "idle" && (
-              <div style={{ background:theme.card, borderRadius:16, padding:20, border:`1px solid ${theme.border}`, display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:13, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginRight:4 }}>PROGRESSION</span>
-                {QUESTIONS.map((_,i) => (
-                  <div key={i} style={{
-                    width:32, height:32, borderRadius:"50%", fontSize:13, fontWeight:700,
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    background: progress.includes(i+1) ? theme.gradient : theme.border,
-                    color: progress.includes(i+1) ? "#fff" : theme.muted,
-                    fontFamily:"'Syne',sans-serif",
-                    boxShadow: progress.includes(i+1) ? "0 2px 8px rgba(200,24,122,0.3)" : "none",
-                    border: i+1 === qIndex+1 && status!=="idle" ? `2px solid ${C.primary}` : "none",
-                    transition:"all 0.3s",
-                  }}>{i+1}</div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            <div style={{ background:theme.card, borderRadius:20, padding:20, border:`1px solid ${theme.border}` }}>
-              <h3 style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:700, color:theme.text, margin:"0 0 20px" }}>FEEDBACK EN TEMPS RÉEL</h3>
-
-              <div style={{ marginBottom:16 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                  <span style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>RYTHME VOCAL</span>
-                  <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:50, background:"#DCFCE7", color:"#16A34A", fontFamily:"'Syne',sans-serif" }}>OPTIMAL</span>
-                </div>
-                <div style={{ height:6, background:theme.border, borderRadius:3, overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:3, background:theme.gradient, width:`${rythme}%`, transition:"width 0.5s" }} />
-                </div>
-                <div style={{ fontSize:11, color:theme.muted, marginTop:4, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Élocution fluide et posée</div>
-              </div>
-
-              <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:10 }}>TON & ATTITUDE</div>
-                {[{label:"ASSURANCE",val:assurance,color:C.primary},{label:"CLARTÉ",val:clarte,color:C.secondary}].map(m => (
-                  <div key={m.label} style={{ marginBottom:10 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                      <span style={{ fontSize:11, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{m.label}</span>
-                      <span style={{ fontSize:11, fontWeight:700, color:m.color, fontFamily:"'Syne',sans-serif" }}>{m.val}%</span>
-                    </div>
-                    <div style={{ height:5, background:theme.border, borderRadius:3, overflow:"hidden" }}>
-                      <div style={{ height:"100%", borderRadius:3, background:m.color, width:`${m.val}%`, transition:"width 0.5s" }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif", marginBottom:8 }}>MOTS-CLÉS DÉTECTÉS</div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                  {MOTS_CLES.slice(0, status==="active" ? 3 : 0).map(k => (
-                    <span key={k} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:50, background:theme.gradientLight, color:C.primary, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>{k}</span>
-                  ))}
-                  {status==="idle" && <span style={{ fontSize:12, color:theme.muted, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>Démarrez l'entretien</span>}
-                </div>
-              </div>
             </div>
-
-            {status !== "idle" && (
-              <button style={{
-                background:theme.card, border:`1px solid ${theme.border}`,
-                color:theme.muted, fontSize:13, fontWeight:600, padding:"12px",
-                borderRadius:12, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                Besoin d'aide ?
-              </button>
-            )}
-          </div>
+          )}
         </div>
+
+        {/* Chat Area */}
+        <div style={{ 
+          flex: 1, 
+          background: theme.card, 
+          borderRadius: 24, 
+          padding: 32, 
+          overflowY: "auto", 
+          position: "relative", 
+          border: `1px solid ${theme.border}`,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.02)",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          {!started ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+              <div style={{ fontSize: 60, marginBottom: 20 }}>🎙️</div>
+              <h2 style={{ fontFamily: "'Syne'", fontWeight: 800 }}>Prêt pour l'entraînement ?</h2>
+              <p style={{ color: theme.muted, maxWidth: 400, marginBottom: 32, fontSize: 15 }}>
+                Alex va analyser votre CV et simuler un entretien d'embauche réaliste. Branchez votre micro !
+              </p>
+              <button onClick={startInterview} className="btn-start">Démarrer l'immersion</button>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg, i) => (
+                <div key={i} style={{ 
+                  marginBottom: 24, 
+                  display: "flex", 
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                  animation: "fadeIn 0.3s ease" 
+                }}>
+                  <div style={{ 
+                    maxWidth: "70%", 
+                    padding: "16px 20px", 
+                    borderRadius: msg.role === "user" ? "20px 20px 4px 20px" : "20px 20px 20px 4px", 
+                    background: msg.role === "user" ? theme.gradient : theme.bg, 
+                    color: msg.role === "user" ? "#fff" : theme.text,
+                    border: msg.role === "user" ? "none" : `1px solid ${theme.border}`,
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.03)"
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 4, opacity: 0.6, letterSpacing: 1 }}>
+                      {msg.role === "user" ? "VOUS" : "ALEX"}
+                    </div>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              
+              {interim && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
+                  <div style={{ padding: "12px 18px", borderRadius: 20, background: "rgba(0,0,0,0.05)", fontSize: 14, fontStyle: "italic", opacity: 0.7 }}>
+                    {interim}...
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </>
+          )}
+        </div>
+
+        {/* Footer Voice Animation */}
+        {started && (
+          <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+             {[1,2,3,4,5,6,7,8].map(i => (
+               <div key={i} className={isListening ? "wave-bar listening" : "wave-bar speaking"} style={{ animationDelay: `${i * 0.1}s` }} />
+             ))}
+          </div>
+        )}
+
       </main>
-      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .btn-start { 
+          padding: 16px 40px; 
+          border-radius: 16px; 
+          background: ${theme.gradient}; 
+          color: white; 
+          border: none; 
+          font-weight: 800; 
+          cursor: pointer; 
+          font-size: 1rem; 
+          font-family: 'Syne';
+          transition: transform 0.2s;
+        }
+        .btn-start:hover { transform: scale(1.05); }
+
+        .pulse-green { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 4px #10b98133; animation: pulse 1.5s infinite; }
+        .pulse-red { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 4px #ef444433; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0px #10b98166; } 100% { box-shadow: 0 0 0 8px #10b98100; } }
+
+        .wave-bar { width: 4px; border-radius: 2px; transition: 0.3s; }
+        .wave-bar.listening { background: ${C.primary}; animation: wave 1s infinite ease-in-out; }
+        .wave-bar.speaking { background: ${C.secondary}; height: 10px; }
+
+        @keyframes wave {
+          0%, 100% { height: 10px; }
+          50% { height: 35px; }
+        }
+      `}</style>
     </div>
   );
 }

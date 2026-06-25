@@ -1,24 +1,32 @@
 from pathlib import Path
 import os
 from datetime import timedelta
+from dotenv import load_dotenv  # Import indispensable
 
+# Charger le fichier .env dès le début
+load_dotenv()
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-wm2)s-f6*opf&ee9x8!ni%1@z-zyabff%-94g$mnn)%)!t$v4+'
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-wm2)s-f6*opf&ee9x8!ni%1@z-zyabff%-94g$mnn)%)!t$v4+')
 
-DEBUG = True
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "0.0.0.0"]
 
 # =========================
 # APPLICATIONS
 # =========================
 INSTALLED_APPS = [
+    'daphne',
     'corsheaders',
 
     'rest_framework',
     'rest_framework.authtoken',
+    'channels',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -27,10 +35,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Tes applications locales
     'users',
     'cv_analysis',
     'matching',
-    'interviews',
+    'Interview',
     'dashboard',
 ]
 
@@ -74,12 +83,19 @@ TEMPLATES = [
     },
 ]
 
-
+# Configuration des serveurs ASGI/WSGI
 WSGI_APPLICATION = 'backend_config.wsgi.application'
+ASGI_APPLICATION = "backend_config.asgi.application"
 
+# Couche de canaux pour le temps réel
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 # =========================
-# DATABASE
+# DATABASE (Docker)
 # =========================
 DATABASES = {
     'default': {
@@ -92,7 +108,6 @@ DATABASES = {
     }
 }
 
-
 # =========================
 # AUTH
 # =========================
@@ -103,7 +118,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
 # =========================
 # INTERNATIONALIZATION
 # =========================
@@ -111,7 +125,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
-
 
 # =========================
 # STATIC + MEDIA
@@ -121,16 +134,20 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # =========================
 # CORS (React)
 # =========================
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5174",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # =========================
@@ -141,14 +158,3 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
     ],
 }
-
-
-# =========================
-# CSRF (IMPORTANT POUR REACT)
-# =========================
-CORS_ALLOW_ALL_ORIGINS = True
-
-# =========================
-# DEFAULT PK
-# =========================
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

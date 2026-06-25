@@ -108,12 +108,19 @@ def login_user(request):
     if not password:
         return JsonResponse({"detail": "Le mot de passe est requis"}, status=400)
 
-    user = authenticate(username=email, password=password)
+    # Authenticate by email (do not rely on username==email)
+    # because Django's authenticate() uses the username field.
+    try:
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        user = None
 
-    if user is None:
+
+    if user is None or not user.check_password(password):
         return JsonResponse({"detail": "Identifiants incorrects"}, status=401)
 
     token, _ = Token.objects.get_or_create(user=user)
+
 
     full_name = f"{user.first_name} {user.last_name}".strip() or user.username
 
