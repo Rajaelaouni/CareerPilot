@@ -58,7 +58,7 @@ pipeline {
             }
         }
 
-        // ✅ FIX 1 : volumes persistants → token survit entre les builds
+        // FIX 1 : volumes persistants → token survit entre les builds
         stage('Start SonarQube') {
             steps {
                 bat '''
